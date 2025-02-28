@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        button {
+            font-size: 16px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        audio {
+            margin-top: 20px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Adalo Audio Recorder</h2>
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording" disabled>Stop Recording</button>
+    <audio id="audioPlayback" controls></audio>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        document.getElementById("startRecording").addEventListener("click", async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: "audio/m4a" });
+                    audioChunks = [];
+
+                    const formData = new FormData();
+                    formData.append("audio_file", audioBlob, "recording.m4a");
+                    formData.append("user_id", "1234");  // Replace dynamically
+                    formData.append("timestamp", new Date().toISOString());
+
+                    // 🔹 Change this to your Make.com Webhook URL
+                    const webhookURL = "https://hook.eu2.make.com/YOUR_WEBHOOK_URL";
+
+                    const response = await fetch(webhookURL, {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        alert("Audio sent successfully!");
+                    } else {
+                        alert("Error sending audio.");
+                    }
+
+                    // Play the recorded audio
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    document.getElementById("audioPlayback").src = audioUrl;
+                };
+
+                mediaRecorder.start();
+                document.getElementById("stopRecording").disabled = false;
+                document.getElementById("startRecording").disabled = true;
+
+            } catch (error) {
+                console.error("Error accessing microphone:", error);
+                alert("Please allow microphone access.");
+            }
+        });
+
+        document.getElementById("stopRecording").addEventListener("click", () => {
+            mediaRecorder.stop();
+            document.getElementById("stopRecording").disabled = true;
+            document.getElementById("startRecording").disabled = false;
+        });
+    </script>
+
+</body>
+</html>
