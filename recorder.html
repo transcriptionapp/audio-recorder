@@ -5,20 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Recorder</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 50px;
-        }
-        button {
-            font-size: 18px;
-            padding: 10px;
-            margin: 10px;
-            cursor: pointer;
-        }
-        audio {
-            margin-top: 20px;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
+        button { font-size: 18px; padding: 10px; margin: 10px; cursor: pointer; }
+        audio { margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -35,7 +24,7 @@
         const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Keep as is
 
         function generateRecordingId() {
-            return "rec_" + crypto.randomUUID(); // Example: rec_a3f2b98e-1d12-4f4e-bb2d-14c05d6a9bf8
+            return "rec_" + crypto.randomUUID(); // Unique ID for each recording
         }
 
         document.getElementById("start").addEventListener("click", async function() {
@@ -88,13 +77,21 @@
                         body: formData
                     });
 
+                    // ✅ Ensure response is processed correctly
+                    let textResponse = await response.text(); // Get raw response first
+
                     if (!response.ok) {
-                        throw new Error(await response.text());
+                        throw new Error(textResponse);
                     }
 
-                    let data = await response.json();
-                    console.log("Uploaded:", data);
-                    document.getElementById("status").innerText = "Upload Complete!";
+                    try {
+                        let data = JSON.parse(textResponse);
+                        console.log("Uploaded:", data);
+                        document.getElementById("status").innerText = "Upload Complete!";
+                    } catch (parseError) {
+                        console.error("JSON parse error:", parseError);
+                        document.getElementById("status").innerText = "Upload Error!";
+                    }
 
                     // ✅ Send a message to Adalo to transition screens
                     window.parent.postMessage({ action: "recordingStopped" }, "*");
