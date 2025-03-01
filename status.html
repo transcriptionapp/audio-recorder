@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcription Status</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
+        #status { font-size: 20px; font-weight: bold; }
+        #transcriptionText { width: 90%; height: 200px; font-size: 16px; display: none; }
+        #editBtn, #saveBtn { font-size: 16px; padding: 10px; cursor: pointer; margin: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Step 2</h1>
+    <p id="status">Hang on, we're transcribing your recording...</p>
+    <textarea id="transcriptionText" disabled></textarea><br>
+    <button id="editBtn">Edit</button>
+    <button id="saveBtn">Save</button>
+
+    <script>
+        function checkTranscriptionStatus() {
+            fetch("https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "completed") {
+                        document.getElementById("status").innerText = "Transcription Complete!";
+                        document.getElementById("transcriptionText").value = data.transcription;
+                        document.getElementById("transcriptionText").style.display = "block";
+                        document.getElementById("editBtn").style.display = "inline";
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+        }
+
+        setInterval(checkTranscriptionStatus, 5000); // Check every 5 seconds
+
+        // Enable editing mode
+        document.getElementById("editBtn").addEventListener("click", function() {
+            document.getElementById("transcriptionText").disabled = false;
+            document.getElementById("editBtn").style.display = "none";
+            document.getElementById("saveBtn").style.display = "inline";
+        });
+
+        // Save edited transcription to Make.com
+        document.getElementById("saveBtn").addEventListener("click", function() {
+            let updatedText = document.getElementById("transcriptionText").value;
+            
+            fetch("https://hook.eu2.make.com/YOUR_SAVE_WEBHOOK", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ transcription: updatedText })
+            })
+            .then(response => response.json())
+            .then(data => alert("Transcription saved successfully!"))
+            .catch(error => console.error("Error saving:", error));
+
+            document.getElementById("transcriptionText").disabled = true;
+            document.getElementById("editBtn").style.display = "inline";
+            document.getElementById("saveBtn").style.display = "none";
+        });
+    </script>
+</body>
+</html>
