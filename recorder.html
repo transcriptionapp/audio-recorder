@@ -24,7 +24,7 @@
         const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Keep as is
 
         function generateRecordingId() {
-            return "rec_" + crypto.randomUUID(); // Unique ID for each recording
+            return "rec_" + crypto.randomUUID(); // Unique recording ID
         }
 
         document.getElementById("start").addEventListener("click", async function() {
@@ -52,36 +52,40 @@
             mediaRecorder.stop();
 
             mediaRecorder.onstop = async () => {
-                let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
-                let audioUrl = URL.createObjectURL(audioBlob);
-                document.getElementById("audio").src = audioUrl;
-                document.getElementById("status").innerText = "Uploading...";
-
-                let recordingId = generateRecordingId();
-                let timestamp = new Date().toISOString();
-                let userId = "admin";
-                let fileUrl = "www.admin.com"; // Static for now
-                let status = "pending"; // Initial status
-
-                let formData = new FormData();
-                formData.append("file", audioBlob, "recording.mp3");
-                formData.append("recording_id", recordingId);
-                formData.append("timestamp", timestamp);
-                formData.append("user_id", userId);
-                formData.append("file_url", fileUrl);
-                formData.append("status", status);
-
                 try {
+                    let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
+                    let audioUrl = URL.createObjectURL(audioBlob);
+                    document.getElementById("audio").src = audioUrl;
+                    document.getElementById("status").innerText = "Uploading...";
+
+                    let recordingId = generateRecordingId();
+                    let timestamp = new Date().toISOString();
+                    let userId = "admin";
+                    let fileUrl = "www.admin.com"; // Static for now
+                    let status = "pending"; // Initial status
+
+                    let formData = new FormData();
+                    formData.append("file", audioBlob, "recording.mp3");
+                    formData.append("recording_id", recordingId);
+                    formData.append("timestamp", timestamp);
+                    formData.append("user_id", userId);
+                    formData.append("file_url", fileUrl);
+                    formData.append("status", status);
+
+                    // ✅ Log FormData content
+                    for (let pair of formData.entries()) {
+                        console.log(`${pair[0]}:`, pair[1]);
+                    }
+
                     let response = await fetch(webhookURL, {
                         method: "POST",
                         body: formData
                     });
 
-                    // ✅ Ensure response is processed correctly
                     let textResponse = await response.text(); // Get raw response first
 
                     if (!response.ok) {
-                        throw new Error(textResponse);
+                        throw new Error(`HTTP ${response.status}: ${textResponse}`);
                     }
 
                     try {
@@ -93,7 +97,7 @@
                         document.getElementById("status").innerText = "Upload Error!";
                     }
 
-                    // ✅ Send a message to Adalo to transition screens
+                    // ✅ Notify Adalo that recording is complete
                     window.parent.postMessage({ action: "recordingStopped" }, "*");
                     console.log("PostMessage sent to Adalo: recordingStopped");
 
