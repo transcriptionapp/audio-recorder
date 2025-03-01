@@ -32,7 +32,7 @@
     <script>
         let mediaRecorder;
         let audioChunks = [];
-        const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Replace later for security
+        const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Replace in server-side env later
 
         document.getElementById("start").addEventListener("click", async function() {
             try {
@@ -59,7 +59,7 @@
             mediaRecorder.stop();
 
             mediaRecorder.onstop = async () => {
-                let audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+                let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
                 let audioUrl = URL.createObjectURL(audioBlob);
                 document.getElementById("audio").src = audioUrl;
                 document.getElementById("status").innerText = "Uploading...";
@@ -79,17 +79,13 @@
                         body: formData
                     });
 
-                    let textResponse = await response.text(); // Capture raw response
-                    console.log("Raw Response:", textResponse);
-
-                    try {
-                        let data = JSON.parse(textResponse);
-                        console.log("Uploaded:", data);
-                        document.getElementById("status").innerText = "Upload Complete!";
-                    } catch (error) {
-                        console.warn("Non-JSON response received:", textResponse);
-                        document.getElementById("status").innerText = "Upload Success but No JSON Response!";
+                    if (!response.ok) {
+                        throw new Error(await response.text());
                     }
+
+                    let data = await response.json();
+                    console.log("Uploaded:", data);
+                    document.getElementById("status").innerText = "Upload Complete!";
                 } catch (error) {
                     console.error("Upload error:", error);
                     document.getElementById("status").innerText = "Upload Failed!";
