@@ -34,6 +34,10 @@
         let audioChunks = [];
         const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Keep as is
 
+        function generateRecordingId() {
+            return "rec_" + crypto.randomUUID(); // Example: rec_a3f2b98e-1d12-4f4e-bb2d-14c05d6a9bf8
+        }
+
         document.getElementById("start").addEventListener("click", async function() {
             try {
                 let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -64,11 +68,19 @@
                 document.getElementById("audio").src = audioUrl;
                 document.getElementById("status").innerText = "Uploading...";
 
+                let recordingId = generateRecordingId();
+                let timestamp = new Date().toISOString();
+                let userId = "admin";
+                let fileUrl = "www.admin.com"; // Static for now
+                let status = "pending"; // Initial status
+
                 let formData = new FormData();
                 formData.append("file", audioBlob, "recording.mp3");
-
-                // Attach a timestamp for tracking
-                formData.append("timestamp", new Date().toISOString());
+                formData.append("recording_id", recordingId);
+                formData.append("timestamp", timestamp);
+                formData.append("user_id", userId);
+                formData.append("file_url", fileUrl);
+                formData.append("status", status);
 
                 try {
                     let response = await fetch(webhookURL, {
