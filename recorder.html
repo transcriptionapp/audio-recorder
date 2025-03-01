@@ -32,7 +32,7 @@
     <script>
         let mediaRecorder;
         let audioChunks = [];
-        const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Replace in server-side env later
+        const webhookURL = "https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f"; // Keep as is
 
         document.getElementById("start").addEventListener("click", async function() {
             try {
@@ -67,9 +67,6 @@
                 let formData = new FormData();
                 formData.append("file", audioBlob, "recording.mp3");
 
-                // Placeholder for user authentication (future implementation)
-                // formData.append("user_id", "user_12345");
-
                 // Attach a timestamp for tracking
                 formData.append("timestamp", new Date().toISOString());
 
@@ -79,13 +76,19 @@
                         body: formData
                     });
 
-                    if (!response.ok) {
-                        throw new Error(await response.text());
+                    let responseText = await response.text(); // Read response as text
+                    console.log("Make.com Response:", responseText);
+
+                    if (response.ok) {
+                        document.getElementById("status").innerText = "Upload Complete!";
+                        
+                        // ✅ Send a message to Adalo that upload is done (no file URL required)
+                        window.parent.postMessage({ action: "uploadConfirmed" }, "*");
+                        console.log("PostMessage sent to Adalo: uploadConfirmed");
+                    } else {
+                        throw new Error(responseText);
                     }
 
-                    let data = await response.json();
-                    console.log("Uploaded:", data);
-                    document.getElementById("status").innerText = "Upload Complete!";
                 } catch (error) {
                     console.error("Upload error:", error);
                     document.getElementById("status").innerText = "Upload Failed!";
