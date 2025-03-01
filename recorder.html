@@ -32,24 +32,30 @@
     <script>
         let mediaRecorder;
         let audioChunks = [];
+        const webhookURL = "YOUR_SECURE_MAKE_WEBHOOK"; // Replace in server-side env later
 
         document.getElementById("start").addEventListener("click", async function() {
-            let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            try {
+                let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-            mediaRecorder.start();
-            audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+                mediaRecorder.start();
+                audioChunks = [];
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
 
-            document.getElementById("start").disabled = true;
-            document.getElementById("stop").disabled = false;
-            document.getElementById("status").innerText = "Recording...";
+                document.getElementById("start").disabled = true;
+                document.getElementById("stop").disabled = false;
+                document.getElementById("status").innerText = "Recording...";
+            } catch (error) {
+                console.error("Recording error:", error);
+                document.getElementById("status").innerText = "Recording failed!";
+            }
         });
 
-        document.getElementById("stop").addEventListener("click", async function() {
+        document.getElementById("stop").addEventListener("click", function() {
             mediaRecorder.stop();
 
             mediaRecorder.onstop = async () => {
@@ -61,25 +67,29 @@
                 let formData = new FormData();
                 formData.append("file", audioBlob, "recording.mp3");
 
-                // User ID (To be dynamically set later when login is implemented)
-                // formData.append("user_id", userID); // Example: "user_12345"
+                // Placeholder for user authentication (future implementation)
+                // formData.append("user_id", "user_12345");
 
-                // Add timestamp dynamically
+                // Attach a timestamp for tracking
                 formData.append("timestamp", new Date().toISOString());
 
-                fetch("https://hook.eu2.make.com/ozajyuh92c63nrqnbwilfoc0d7nyne7f", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
+                try {
+                    let response = await fetch(webhookURL, {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+
+                    let data = await response.json();
                     console.log("Uploaded:", data);
                     document.getElementById("status").innerText = "Upload Complete!";
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error("Upload error:", error);
                     document.getElementById("status").innerText = "Upload Failed!";
-                });
+                }
 
                 document.getElementById("start").disabled = false;
                 document.getElementById("stop").disabled = true;
