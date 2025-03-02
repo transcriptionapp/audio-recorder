@@ -8,7 +8,7 @@
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
         #status { font-size: 20px; font-weight: bold; }
         #transcriptionText { width: 90%; height: 200px; font-size: 16px; display: none; }
-        #editBtn, #saveBtn { font-size: 16px; padding: 10px; cursor: pointer; margin: 10px; display: none; }
+        #editBtn, #saveBtn { font-size: 16px; padding: 10px; margin: 10px; display: none; }
     </style>
 </head>
 <body>
@@ -19,26 +19,29 @@
     <button id="saveBtn">Save</button>
 
     <script>
-        const airtableFetchURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Free_Transcription_Usage%20Table";
-        const airtableUpdateURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Free_Transcription_Usage%20Table";
-        const apiKey = "Bearer patPkh6EP9sLPayyv.a38f354cb915127b08cc3d128282be41bf94fba0169eca7ef91ed785a80d83f4"; // Secure this in a backend
+        const airtableFetchURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
+        const airtableUpdateURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
+        const apiKey = "patPkh6EP9sLPayyv.a38f354cb915127b08cc3d128282be41bf94fba0169eca7ef91ed785a80d83f4"; // Secure in backend
 
-        let recordingId = ""; // Will be assigned after fetching
+        let recordId = ""; // Airtable's internal record ID
 
         async function fetchTranscription() {
             try {
-                const response = await fetch(`${airtableFetchURL}?filterByFormula={user_id}='admin'&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`, {
+                const response = await fetch(`${airtableFetchURL}?filterByFormula={user_id}="admin"&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`, {
                     method: "GET",
                     headers: {
-                        "Authorization": `Bearer ${apiKey}`,
+                        "Authorization": `Bearer ${apiKey}`,  // ✅ Corrected Bearer usage
                         "Content-Type": "application/json"
                     }
                 });
 
                 const data = await response.json();
+                console.log("Fetched Data:", data);
+
                 if (data.records.length > 0) {
                     let record = data.records[0];
-                    recordingId = record.fields.recording_id;
+                    recordId = record.id; // ✅ Use Airtable's internal record ID
+
                     document.getElementById("status").innerText = "Transcription Loaded!";
                     document.getElementById("transcriptionText").value = record.fields.transcription;
                     document.getElementById("transcriptionText").style.display = "block";
@@ -70,10 +73,10 @@
                     },
                     body: JSON.stringify({
                         records: [{
-                            id: recordingId,
+                            id: recordId,  // ✅ Using correct record ID
                             fields: {
                                 edited_text: updatedText,
-                                is_edited: true
+                                is_edited: "✔"  // ✅ Use proper value for Airtable single-select
                             }
                         }]
                     })
