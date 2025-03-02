@@ -83,17 +83,20 @@
                     });
 
                     let textResponse = await response.text(); // Get raw response first
+                    console.log("Raw Response:", textResponse);
 
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${textResponse}`);
                     }
 
                     try {
-                        let data = JSON.parse(textResponse);
+                        // ✅ Check if response is JSON before parsing
+                        let data = textResponse.startsWith("{") ? JSON.parse(textResponse) : { message: textResponse };
+
                         console.log("Uploaded:", data);
                         document.getElementById("status").innerText = "Upload Complete!";
                     } catch (parseError) {
-                        console.error("JSON parse error:", parseError);
+                        console.error("JSON parse error:", parseError, "Response was:", textResponse);
                         document.getElementById("status").innerText = "Upload Error!";
                     }
 
@@ -110,6 +113,7 @@
                 document.getElementById("stop").disabled = true;
             };
         });
+
     </script>
 
 </body>
