@@ -19,18 +19,19 @@
     <button id="saveBtn">Save</button>
 
     <script>
-        const airtableFetchURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
-        const airtableUpdateURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
-        const apiKey = "pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540"; // Secure in backend
+        const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
+        const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540"; // ⚠️ Secure this in backend
 
-        let recordId = ""; // Airtable's internal record ID
+        let recordId = ""; // Store Airtable's internal record ID
 
+        // Fetch latest transcription for "admin"
         async function fetchTranscription() {
             try {
-                const response = await fetch(`${airtableFetchURL}?filterByFormula={user_id}="admin"&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`, {
+                const url = `${airtableBaseURL}?filterByFormula=${encodeURIComponent('{user_id}="admin"')}&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const response = await fetch(url, {
                     method: "GET",
                     headers: {
-                        "Authorization": `Bearer ${apiKey}`,  // ✅ Corrected Bearer usage
+                        "Authorization": apiKey,
                         "Content-Type": "application/json"
                     }
                 });
@@ -38,12 +39,11 @@
                 const data = await response.json();
                 console.log("Fetched Data:", data);
 
-                if (data.records.length > 0) {
+                if (data.records && data.records.length > 0) {
                     let record = data.records[0];
-                    recordId = record.id; // ✅ Use Airtable's internal record ID
-
+                    recordId = record.id; // ✅ Use Airtable's internal ID
                     document.getElementById("status").innerText = "Transcription Loaded!";
-                    document.getElementById("transcriptionText").value = record.fields.transcription;
+                    document.getElementById("transcriptionText").value = record.fields.transcription || ""; // Handle empty case
                     document.getElementById("transcriptionText").style.display = "block";
                     document.getElementById("editBtn").style.display = "inline";
                 } else {
@@ -55,20 +55,22 @@
             }
         }
 
+        // Enable editing
         document.getElementById("editBtn").addEventListener("click", function() {
             document.getElementById("transcriptionText").disabled = false;
             document.getElementById("editBtn").style.display = "none";
             document.getElementById("saveBtn").style.display = "inline";
         });
 
+        // Save edited transcription back to Airtable
         document.getElementById("saveBtn").addEventListener("click", async function() {
             let updatedText = document.getElementById("transcriptionText").value;
 
             try {
-                let response = await fetch(airtableUpdateURL, {
+                let response = await fetch(airtableBaseURL, {
                     method: "PATCH",
                     headers: {
-                        "Authorization": `Bearer ${apiKey}`,
+                        "Authorization": apiKey,
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
@@ -76,11 +78,14 @@
                             id: recordId,  // ✅ Using correct record ID
                             fields: {
                                 edited_text: updatedText,
-                                is_edited: "✔"  // ✅ Use proper value for Airtable single-select
+                                is_edited: true // ✅ Set to boolean true for checkbox field
                             }
                         }]
                     })
                 });
+
+                const result = await response.json();
+                console.log("Save Response:", result);
 
                 if (response.ok) {
                     document.getElementById("status").innerText = "Transcription saved successfully!";
@@ -88,7 +93,7 @@
                     document.getElementById("editBtn").style.display = "inline";
                     document.getElementById("saveBtn").style.display = "none";
                 } else {
-                    throw new Error(await response.text());
+                    throw new Error(result.error || "Unknown error");
                 }
             } catch (error) {
                 console.error("Save error:", error);
