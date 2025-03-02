@@ -27,7 +27,10 @@
         // Fetch latest transcription for "admin"
         async function fetchTranscription() {
             try {
-                const url = `${airtableBaseURL}?filterByFormula=${encodeURIComponent('{user_id}="admin"')}&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const query = `filterByFormula=${encodeURIComponent(`user_id = 'admin'`)}&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const url = `${airtableBaseURL}?${query}`;
+                console.log("Fetching from:", url); // ✅ Debugging URL
+
                 const response = await fetch(url, {
                     method: "GET",
                     headers: {
@@ -37,18 +40,18 @@
                 });
 
                 const data = await response.json();
-                console.log("Fetched Data:", data);
+                console.log("Fetched Data:", data); // ✅ Debugging full API response
 
-                if (data.records && data.records.length > 0) {
-                    let record = data.records[0];
-                    recordId = record.id; // ✅ Use Airtable's internal ID
-                    document.getElementById("status").innerText = "Transcription Loaded!";
-                    document.getElementById("transcriptionText").value = record.fields.transcription || ""; // Handle empty case
-                    document.getElementById("transcriptionText").style.display = "block";
-                    document.getElementById("editBtn").style.display = "inline";
-                } else {
-                    document.getElementById("status").innerText = "No transcription found!";
+                if (!data.records || data.records.length === 0) {
+                    throw new Error("No records found.");
                 }
+
+                let record = data.records[0];
+                recordId = record.id; // ✅ Use Airtable's internal ID
+                document.getElementById("status").innerText = "Transcription Loaded!";
+                document.getElementById("transcriptionText").value = record.fields.transcription || ""; // Handle empty case
+                document.getElementById("transcriptionText").style.display = "block";
+                document.getElementById("editBtn").style.display = "inline";
             } catch (error) {
                 console.error("Fetch error:", error);
                 document.getElementById("status").innerText = "Failed to load transcription.";
