@@ -27,6 +27,10 @@
         const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
         const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540";
 
+        function generateRecordingId() {
+            return "rec_" + crypto.randomUUID();
+        }
+
         document.getElementById("start").addEventListener("click", async function() {
             try {
                 let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -49,8 +53,20 @@
             mediaRecorder.onstop = async () => {
                 let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
                 document.getElementById("status").innerText = "Uploading...";
+                let recordingId = generateRecordingId();
+                let timestamp = new Date().toISOString();
+                let userId = "admin";
+                let fileUrl = "www.admin.com";
+                let status = "pending";
+
                 let formData = new FormData();
                 formData.append("file", audioBlob, "recording.mp3");
+                formData.append("recording_id", recordingId);
+                formData.append("timestamp", timestamp);
+                formData.append("user_id", userId);
+                formData.append("file_url", fileUrl);
+                formData.append("status", status);
+                
                 try {
                     await fetch(webhookURL, { method: "POST", body: formData });
                     setTimeout(fetchTranscription, 5000);
@@ -81,34 +97,6 @@
                 console.error("Fetch error:", error);
             }
         }
-
-        document.getElementById("editBtn").addEventListener("click", function() {
-            document.getElementById("transcriptionText").disabled = false;
-            document.getElementById("editBtn").style.display = "none";
-            document.getElementById("saveBtn").style.display = "inline";
-        });
-
-        document.getElementById("saveBtn").addEventListener("click", async function() {
-            let updatedText = document.getElementById("transcriptionText").value;
-            try {
-                await fetch(airtableBaseURL, {
-                    method: "PATCH",
-                    headers: { "Authorization": apiKey, "Content-Type": "application/json" },
-                    body: JSON.stringify({ records: [{ fields: { transcription: updatedText } }] })
-                });
-                document.getElementById("transcriptionText").disabled = true;
-                document.getElementById("editBtn").style.display = "inline";
-                document.getElementById("saveBtn").style.display = "none";
-            } catch (error) {
-                console.error("Save error:", error);
-            }
-        });
-
-        document.getElementById("copyBtn").addEventListener("click", function() {
-            navigator.clipboard.writeText(document.getElementById("transcriptionText").value)
-                .then(() => alert("✅ Text copied to clipboard!"))
-                .catch(err => console.error("Clipboard error:", err));
-        });
     </script>
 </body>
 </html>
