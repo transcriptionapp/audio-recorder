@@ -83,36 +83,6 @@
             };
         });
 
-        async function fetchTranscription() {
-            try {
-                const query = `filterByFormula=AND({user_id}='${userId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
-                const url = `${airtableBaseURL}?${query}`;
-                console.log("Fetching from:", url);
-                const response = await fetch(url, {
-                    method: "GET",
-                    headers: { "Authorization": apiKey }
-                });
-                const data = await response.json();
-                
-                if (data.records.length > 0) {
-                    let record = data.records[0];
-                    recordId = record.id;
-                    transcriptionText = record.fields.transcription || "";
-                    editedText = record.fields.edited_text || "";
-                    isEdited = !!record.fields.is_edited;
-                    document.getElementById("transcriptionText").value = isEdited ? editedText : transcriptionText;
-                    document.getElementById("transcriptionText").style.display = "block";
-                    document.getElementById("editBtn").style.display = "inline";
-                    document.getElementById("copyBtn").style.display = "inline";
-                    document.getElementById("status").innerText = "Transcription Loaded!";
-                } else {
-                    document.getElementById("status").innerText = "No transcription found.";
-                }
-            } catch (error) {
-                console.error("Fetch error:", error);
-            }
-        }
-
         document.getElementById("copyBtn").addEventListener("click", function() {
             let textToCopy = isEdited ? editedText : transcriptionText;
             if (!textToCopy || textToCopy.trim() === "") {
@@ -123,6 +93,7 @@
             console.log("Copying text:", textToCopy);
             navigator.clipboard.writeText(textToCopy).then(() => {
                 alert("✅ Text copied to clipboard!");
+                console.log("Copied successfully:", textToCopy);
             }).catch(err => {
                 console.error("Clipboard API error:", err);
                 fallbackClipboardCopy(textToCopy);
@@ -133,12 +104,19 @@
             let textArea = document.createElement("textarea");
             textArea.value = text;
             textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            textArea.style.left = "-9999px";
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
             try {
-                document.execCommand("copy");
-                alert("✅ Text copied to clipboard!");
+                let successful = document.execCommand("copy");
+                if (successful) {
+                    alert("✅ Text copied to clipboard!");
+                    console.log("Fallback copy successful:", text);
+                } else {
+                    console.error("Fallback copy failed.");
+                }
             } catch (err) {
                 console.error("Fallback clipboard error:", err);
             }
