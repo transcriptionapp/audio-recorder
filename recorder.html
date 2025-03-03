@@ -73,4 +73,42 @@
                 if (data.records.length > 0) {
                     document.getElementById("transcriptionText").value = data.records[0].fields.transcription || "";
                     document.getElementById("transcriptionText").style.display = "block";
-                    document.getElementById("edit
+                    document.getElementById("editBtn").style.display = "inline";
+                    document.getElementById("copyBtn").style.display = "inline";
+                    document.getElementById("status").innerText = "Transcription Ready!";
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
+        }
+
+        document.getElementById("editBtn").addEventListener("click", function() {
+            document.getElementById("transcriptionText").disabled = false;
+            document.getElementById("editBtn").style.display = "none";
+            document.getElementById("saveBtn").style.display = "inline";
+        });
+
+        document.getElementById("saveBtn").addEventListener("click", async function() {
+            let updatedText = document.getElementById("transcriptionText").value;
+            try {
+                await fetch(airtableBaseURL, {
+                    method: "PATCH",
+                    headers: { "Authorization": apiKey, "Content-Type": "application/json" },
+                    body: JSON.stringify({ records: [{ fields: { transcription: updatedText } }] })
+                });
+                document.getElementById("transcriptionText").disabled = true;
+                document.getElementById("editBtn").style.display = "inline";
+                document.getElementById("saveBtn").style.display = "none";
+            } catch (error) {
+                console.error("Save error:", error);
+            }
+        });
+
+        document.getElementById("copyBtn").addEventListener("click", function() {
+            navigator.clipboard.writeText(document.getElementById("transcriptionText").value)
+                .then(() => alert("✅ Text copied to clipboard!"))
+                .catch(err => console.error("Clipboard error:", err));
+        });
+    </script>
+</body>
+</html>
