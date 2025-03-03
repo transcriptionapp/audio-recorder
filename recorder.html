@@ -11,13 +11,18 @@ export default function TranscriptionScreen() {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [transcript, setTranscript] = useState("");
   const [editing, setEditing] = useState(false);
+  const [status, setStatus] = useState("Press 'Start Recording'");
   const { copy } = useClipboard();
   const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
   const webhookURL = "https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z";
+  const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540";
 
   useEffect(() => {
-    fetchTranscription();
-  }, []);
+    if (status === "Processing...") {
+      const interval = setInterval(fetchTranscription, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [status]);
 
   const startRecording = async () => {
     try {
@@ -38,6 +43,7 @@ export default function TranscriptionScreen() {
       setMediaRecorder(recorder);
       recorder.start();
       setRecording(true);
+      setStatus("Recording...");
     } catch (error) {
       console.error("Recording error:", error);
     }
@@ -47,6 +53,7 @@ export default function TranscriptionScreen() {
     if (mediaRecorder) {
       mediaRecorder.stop();
       setRecording(false);
+      setStatus("Processing...");
     }
   };
 
@@ -56,20 +63,26 @@ export default function TranscriptionScreen() {
 
     try {
       await axios.post(webhookURL, formData);
-      setTimeout(fetchTranscription, 5000);
+      setTimeout(() => fetchTranscription(true), 5000);
     } catch (error) {
       console.error("Upload error:", error);
     }
   };
 
-  const fetchTranscription = async () => {
+  const fetchTranscription = async (initialCheck = false) => {
     try {
       const response = await axios.get(airtableBaseURL, {
-        headers: { Authorization: "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540" },
+        headers: { Authorization: apiKey },
       });
 
       if (response.data.records.length > 0) {
-        setTranscript(response.data.records[0].fields.transcription || "");
+        const latestTranscript = response.data.records[0].fields.transcription || "";
+        if (latestTranscript) {
+          setTranscript(latestTranscript);
+          setStatus("Transcription Ready!");
+        } else if (initialCheck) {
+          setStatus("Processing...");
+        }
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -80,7 +93,7 @@ export default function TranscriptionScreen() {
     try {
       await axios.patch(airtableBaseURL, {
         records: [{ fields: { transcription: transcript } }],
-      }, { headers: { Authorization: "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540" } });
+      }, { headers: { Authorization: apiKey } });
       setEditing(false);
     } catch (error) {
       console.error("Save error:", error);
@@ -92,6 +105,7 @@ export default function TranscriptionScreen() {
       <Card>
         <CardContent>
           <div className="flex flex-col items-center gap-4">
+            <p>{status}</p>
             {!recording ? (
               <Button onClick={startRecording}>Start Recording</Button>
             ) : (
