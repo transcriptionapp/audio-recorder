@@ -8,16 +8,20 @@
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
         #status { font-size: 20px; font-weight: bold; }
         #transcriptionText { width: 90%; height: 200px; font-size: 16px; display: none; }
-        #editBtn, #saveBtn, #copyBtn { font-size: 16px; padding: 10px; margin: 10px; cursor: pointer; display: none; }
+        .button-container { margin-top: 10px; }
+        button { font-size: 16px; padding: 10px; margin: 5px; cursor: pointer; display: none; }
     </style>
 </head>
 <body>
     <h1>Step 3</h1>
     <p id="status">Fetching your transcription...</p>
     <textarea id="transcriptionText" disabled></textarea><br>
-    <button id="editBtn">Edit</button>
-    <button id="saveBtn">Save</button>
-    <button id="copyBtn">Copy to Clipboard</button> <!-- ✅ New Copy Button -->
+    
+    <div class="button-container">
+        <button id="editBtn">Edit</button>
+        <button id="saveBtn">Save</button>
+        <button id="copyBtn">📋 Copy to Clipboard</button> <!-- ✅ Copy Button now aligned properly -->
+    </div>
 
     <script>
         const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
@@ -113,11 +117,11 @@
             }
         });
 
-        // ✅ New Function to Copy Text to Clipboard
+        // ✅ Copy to Clipboard Function
         document.getElementById("copyBtn").addEventListener("click", function() {
             let textToCopy = isEdited ? editedText : transcriptionText;
             navigator.clipboard.writeText(textToCopy).then(() => {
-                alert("Text copied to clipboard!");
+                alert("✅ Text copied to clipboard!");
             }).catch(err => {
                 console.error("Failed to copy:", err);
             });
