@@ -26,6 +26,7 @@
         const webhookURL = "https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z";
         const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
         const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540";
+        let userId = "admin";
 
         function generateRecordingId() {
             return "rec_" + crypto.randomUUID();
@@ -55,7 +56,6 @@
                 document.getElementById("status").innerText = "Uploading...";
                 let recordingId = generateRecordingId();
                 let timestamp = new Date().toISOString();
-                let userId = "admin";
                 let fileUrl = "www.admin.com";
                 let status = "pending";
 
@@ -69,7 +69,7 @@
                 
                 try {
                     await fetch(webhookURL, { method: "POST", body: formData });
-                    setTimeout(fetchTranscription, 5000);
+                    setTimeout(() => fetchTranscription(recordingId), 5000);
                 } catch (error) {
                     console.error("Upload error:", error);
                     document.getElementById("status").innerText = "Upload Failed!";
@@ -79,19 +79,25 @@
             };
         });
 
-        async function fetchTranscription() {
+        async function fetchTranscription(recordingId) {
             try {
-                const response = await fetch(airtableBaseURL, {
+                const query = `filterByFormula=AND({user_id}='${userId}', {recording_id}='${recordingId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const url = `${airtableBaseURL}?${query}`;
+                console.log("Fetching from:", url);
+                const response = await fetch(url, {
                     method: "GET",
                     headers: { "Authorization": apiKey }
                 });
                 const data = await response.json();
+                
                 if (data.records.length > 0) {
                     document.getElementById("transcriptionText").value = data.records[0].fields.transcription || "";
                     document.getElementById("transcriptionText").style.display = "block";
                     document.getElementById("editBtn").style.display = "inline";
                     document.getElementById("copyBtn").style.display = "inline";
                     document.getElementById("status").innerText = "Transcription Ready!";
+                } else {
+                    document.getElementById("status").innerText = "No recent transcription found.";
                 }
             } catch (error) {
                 console.error("Fetch error:", error);
