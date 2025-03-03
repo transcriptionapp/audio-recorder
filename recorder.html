@@ -113,30 +113,31 @@
             }
         }
 
-        document.getElementById("editBtn").addEventListener("click", function() {
-            document.getElementById("transcriptionText").disabled = false;
-            document.getElementById("editBtn").style.display = "none";
-            document.getElementById("saveBtn").style.display = "inline";
+        document.getElementById("copyBtn").addEventListener("click", function() {
+            let textToCopy = isEdited ? editedText : transcriptionText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert("✅ Text copied to clipboard!");
+            }).catch(err => {
+                console.error("Clipboard API error:", err);
+                fallbackClipboardCopy(textToCopy);
+            });
         });
 
-        document.getElementById("saveBtn").addEventListener("click", async function() {
-            let updatedText = document.getElementById("transcriptionText").value;
+        function fallbackClipboardCopy(text) {
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
             try {
-                await fetch(airtableBaseURL, {
-                    method: "PATCH",
-                    headers: { "Authorization": apiKey, "Content-Type": "application/json" },
-                    body: JSON.stringify({ records: [{ id: recordId, fields: { edited_text: updatedText, is_edited: true } }] })
-                });
-                document.getElementById("status").innerText = "Transcription saved successfully!";
-                document.getElementById("transcriptionText").disabled = true;
-                document.getElementById("editBtn").style.display = "inline";
-                document.getElementById("saveBtn").style.display = "none";
-                isEdited = true;
-                editedText = updatedText;
-            } catch (error) {
-                console.error("Save error:", error);
+                document.execCommand("copy");
+                alert("✅ Text copied to clipboard!");
+            } catch (err) {
+                console.error("Fallback clipboard error:", err);
             }
-        });
+            document.body.removeChild(textArea);
+        }
     </script>
 </body>
 </html>
