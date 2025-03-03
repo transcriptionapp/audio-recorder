@@ -65,7 +65,7 @@ export default function TranscriptionScreen() {
   const fetchTranscription = async () => {
     try {
       const response = await axios.get(airtableBaseURL, {
-        headers: { Authorization: "Bearer YOUR_API_KEY" },
+        headers: { Authorization: "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540" },
       });
 
       if (response.data.records.length > 0) {
@@ -80,7 +80,7 @@ export default function TranscriptionScreen() {
     try {
       await axios.patch(airtableBaseURL, {
         records: [{ fields: { transcription: transcript } }],
-      }, { headers: { Authorization: "Bearer YOUR_API_KEY" } });
+      }, { headers: { Authorization: "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540" } });
       setEditing(false);
     } catch (error) {
       console.error("Save error:", error);
