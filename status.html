@@ -46,6 +46,10 @@
                     }
                 });
 
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
                 const data = await response.json();
                 console.log("Fetched Data:", data);
 
@@ -58,7 +62,7 @@
                 recordId = record.id;
                 transcriptionText = record.fields.transcription || "";
                 editedText = record.fields.edited_text || "";
-                isEdited = !!record.fields.is_edited;
+                isEdited = !!record.fields.is_edited; 
 
                 document.getElementById("status").innerText = "Transcription Loaded!";
                 document.getElementById("transcriptionText").value = isEdited ? editedText : transcriptionText;
@@ -98,19 +102,19 @@
                     })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
                 const result = await response.json();
                 console.log("Save Response:", result);
 
-                if (response.ok) {
-                    document.getElementById("status").innerText = "Transcription saved successfully!";
-                    document.getElementById("transcriptionText").disabled = true;
-                    document.getElementById("editBtn").style.display = "inline";
-                    document.getElementById("saveBtn").style.display = "none";
-                    isEdited = true;
-                    editedText = updatedText;
-                } else {
-                    throw new Error(result.error || "Unknown error");
-                }
+                document.getElementById("status").innerText = "Transcription saved successfully!";
+                document.getElementById("transcriptionText").disabled = true;
+                document.getElementById("editBtn").style.display = "inline";
+                document.getElementById("saveBtn").style.display = "none";
+                isEdited = true;
+                editedText = updatedText;
             } catch (error) {
                 console.error("Save error:", error);
                 document.getElementById("status").innerText = "Failed to save transcription.";
@@ -121,11 +125,11 @@
             let textToCopy = isEdited ? editedText : transcriptionText;
 
             if (navigator.clipboard && window.isSecureContext) {
-                // ✅ Modern browsers with secure context
+                // ✅ Modern browsers
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     alert("✅ Text copied to clipboard!");
                 }).catch(err => {
-                    console.error("Failed to copy:", err);
+                    console.error("Clipboard error:", err);
                 });
             } else {
                 // ✅ Fallback for older browsers
@@ -137,7 +141,7 @@
                     document.execCommand("copy");
                     alert("✅ Text copied to clipboard!");
                 } catch (err) {
-                    console.error("Failed to copy:", err);
+                    console.error("Clipboard error:", err);
                 }
                 document.body.removeChild(textArea);
             }
