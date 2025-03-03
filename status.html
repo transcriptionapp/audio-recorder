@@ -58,7 +58,7 @@
                 recordId = record.id;
                 transcriptionText = record.fields.transcription || "";
                 editedText = record.fields.edited_text || "";
-                isEdited = !!record.fields.is_edited; // Ensure it's a boolean
+                isEdited = !!record.fields.is_edited;
 
                 document.getElementById("status").innerText = "Transcription Loaded!";
                 document.getElementById("transcriptionText").value = isEdited ? editedText : transcriptionText;
@@ -119,11 +119,28 @@
 
         document.getElementById("copyBtn").addEventListener("click", function() {
             let textToCopy = isEdited ? editedText : transcriptionText;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                alert("✅ Text copied to clipboard!");
-            }).catch(err => {
-                console.error("Failed to copy:", err);
-            });
+
+            if (navigator.clipboard && window.isSecureContext) {
+                // ✅ Modern browsers with secure context
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    alert("✅ Text copied to clipboard!");
+                }).catch(err => {
+                    console.error("Failed to copy:", err);
+                });
+            } else {
+                // ✅ Fallback for older browsers
+                let textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand("copy");
+                    alert("✅ Text copied to clipboard!");
+                } catch (err) {
+                    console.error("Failed to copy:", err);
+                }
+                document.body.removeChild(textArea);
+            }
         });
 
         fetchTranscription();
