@@ -115,6 +115,12 @@
 
         document.getElementById("copyBtn").addEventListener("click", function() {
             let textToCopy = isEdited ? editedText : transcriptionText;
+            if (!textToCopy || textToCopy.trim() === "") {
+                alert("⚠️ No text available to copy!");
+                console.error("Clipboard error: No text found to copy.");
+                return;
+            }
+            console.log("Copying text:", textToCopy);
             navigator.clipboard.writeText(textToCopy).then(() => {
                 alert("✅ Text copied to clipboard!");
             }).catch(err => {
