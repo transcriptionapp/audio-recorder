@@ -9,7 +9,6 @@
         button { font-size: 18px; padding: 10px; margin: 10px; cursor: pointer; }
         textarea { width: 90%; height: 200px; font-size: 16px; display: none; }
     </style>
-    <!-- Include Clipboard.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
 </head>
 <body>
@@ -84,6 +83,36 @@
                 document.getElementById("stop").disabled = true;
             };
         });
+
+        async function fetchTranscription() {
+            try {
+                const query = `filterByFormula=AND({user_id}='${userId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const url = `${airtableBaseURL}?${query}`;
+                console.log("Fetching from:", url);
+                const response = await fetch(url, {
+                    method: "GET",
+                    headers: { "Authorization": apiKey }
+                });
+                const data = await response.json();
+                
+                if (data.records.length > 0) {
+                    let record = data.records[0];
+                    recordId = record.id;
+                    transcriptionText = record.fields.transcription || "";
+                    editedText = record.fields.edited_text || "";
+                    isEdited = !!record.fields.is_edited;
+                    document.getElementById("transcriptionText").value = isEdited ? editedText : transcriptionText;
+                    document.getElementById("transcriptionText").style.display = "block";
+                    document.getElementById("editBtn").style.display = "inline";
+                    document.getElementById("copyBtn").style.display = "inline";
+                    document.getElementById("status").innerText = "Transcription Loaded!";
+                } else {
+                    document.getElementById("status").innerText = "No transcription found.";
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
+        }
 
         new ClipboardJS('#copyBtn').on('success', function(e) {
             alert('✅ Text copied to clipboard!');
