@@ -27,6 +27,10 @@
         const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
         const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540";
         let userId = "admin";
+        let recordId = "";
+        let transcriptionText = "";
+        let editedText = "";
+        let isEdited = false;
 
         function generateRecordingId() {
             return "rec_" + crypto.randomUUID();
@@ -69,7 +73,7 @@
                 
                 try {
                     await fetch(webhookURL, { method: "POST", body: formData });
-                    setTimeout(() => fetchTranscription(recordingId), 5000);
+                    setTimeout(fetchTranscription, 5000);
                 } catch (error) {
                     console.error("Upload error:", error);
                     document.getElementById("status").innerText = "Upload Failed!";
@@ -79,9 +83,9 @@
             };
         });
 
-        async function fetchTranscription(recordingId) {
+        async function fetchTranscription() {
             try {
-                const query = `filterByFormula=AND({user_id}='${userId}', {recording_id}='${recordingId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const query = `filterByFormula=AND({user_id}='${userId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
                 const url = `${airtableBaseURL}?${query}`;
                 console.log("Fetching from:", url);
                 const response = await fetch(url, {
@@ -91,18 +95,48 @@
                 const data = await response.json();
                 
                 if (data.records.length > 0) {
-                    document.getElementById("transcriptionText").value = data.records[0].fields.transcription || "";
+                    let record = data.records[0];
+                    recordId = record.id;
+                    transcriptionText = record.fields.transcription || "";
+                    editedText = record.fields.edited_text || "";
+                    isEdited = !!record.fields.is_edited;
+                    document.getElementById("transcriptionText").value = isEdited ? editedText : transcriptionText;
                     document.getElementById("transcriptionText").style.display = "block";
                     document.getElementById("editBtn").style.display = "inline";
                     document.getElementById("copyBtn").style.display = "inline";
-                    document.getElementById("status").innerText = "Transcription Ready!";
+                    document.getElementById("status").innerText = "Transcription Loaded!";
                 } else {
-                    document.getElementById("status").innerText = "No recent transcription found.";
+                    document.getElementById("status").innerText = "No transcription found.";
                 }
             } catch (error) {
                 console.error("Fetch error:", error);
             }
         }
+
+        document.getElementById("editBtn").addEventListener("click", function() {
+            document.getElementById("transcriptionText").disabled = false;
+            document.getElementById("editBtn").style.display = "none";
+            document.getElementById("saveBtn").style.display = "inline";
+        });
+
+        document.getElementById("saveBtn").addEventListener("click", async function() {
+            let updatedText = document.getElementById("transcriptionText").value;
+            try {
+                await fetch(airtableBaseURL, {
+                    method: "PATCH",
+                    headers: { "Authorization": apiKey, "Content-Type": "application/json" },
+                    body: JSON.stringify({ records: [{ id: recordId, fields: { edited_text: updatedText, is_edited: true } }] })
+                });
+                document.getElementById("status").innerText = "Transcription saved successfully!";
+                document.getElementById("transcriptionText").disabled = true;
+                document.getElementById("editBtn").style.display = "inline";
+                document.getElementById("saveBtn").style.display = "none";
+                isEdited = true;
+                editedText = updatedText;
+            } catch (error) {
+                console.error("Save error:", error);
+            }
+        });
     </script>
 </body>
 </html>
