@@ -9,6 +9,8 @@
         button { font-size: 18px; padding: 10px; margin: 10px; cursor: pointer; }
         textarea { width: 90%; height: 200px; font-size: 16px; display: none; }
     </style>
+    <!-- Include Clipboard.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
 </head>
 <body>
     <h1>Audio Recorder & Transcription</h1>
@@ -18,7 +20,7 @@
     <textarea id="transcriptionText" disabled></textarea><br>
     <button id="editBtn" style="display: none;">Edit</button>
     <button id="saveBtn" style="display: none;">Save</button>
-    <button id="copyBtn" style="display: none;">📋 Copy to Clipboard</button>
+    <button id="copyBtn" data-clipboard-target="#transcriptionText" style="display: none;">📋 Copy to Clipboard</button>
     
     <script>
         let mediaRecorder;
@@ -83,45 +85,13 @@
             };
         });
 
-        document.getElementById("copyBtn").addEventListener("click", function() {
-            let textToCopy = isEdited ? editedText : transcriptionText;
-            if (!textToCopy || textToCopy.trim() === "") {
-                alert("⚠️ No text available to copy!");
-                console.error("Clipboard error: No text found to copy.");
-                return;
-            }
-            console.log("Copying text:", textToCopy);
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                alert("✅ Text copied to clipboard!");
-                console.log("Copied successfully:", textToCopy);
-            }).catch(err => {
-                console.error("Clipboard API error:", err);
-                fallbackClipboardCopy(textToCopy);
-            });
+        new ClipboardJS('#copyBtn').on('success', function(e) {
+            alert('✅ Text copied to clipboard!');
+            console.log('Copied successfully:', e.text);
+            e.clearSelection();
+        }).on('error', function(e) {
+            console.error('Clipboard.js error:', e);
         });
-
-        function fallbackClipboardCopy(text) {
-            let textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.opacity = "0";
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                let successful = document.execCommand("copy");
-                if (successful) {
-                    alert("✅ Text copied to clipboard!");
-                    console.log("Fallback copy successful:", text);
-                } else {
-                    console.error("Fallback copy failed.");
-                }
-            } catch (err) {
-                console.error("Fallback clipboard error:", err);
-            }
-            document.body.removeChild(textArea);
-        }
     </script>
 </body>
 </html>
