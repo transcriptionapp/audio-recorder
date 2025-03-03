@@ -12,7 +12,7 @@ export default function TranscriptionScreen() {
   const [transcript, setTranscript] = useState("");
   const [editing, setEditing] = useState(false);
   const { copy } = useClipboard();
-  const airtableBaseURL = "https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_NAME";
+  const airtableBaseURL = "https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Transcriptions";
   const webhookURL = "https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z";
 
   useEffect(() => {
