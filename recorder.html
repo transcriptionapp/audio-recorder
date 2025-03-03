@@ -84,35 +84,32 @@
             };
         });
 
-        async function fetchTranscription() {
+        document.getElementById("editBtn").addEventListener("click", function() {
+            document.getElementById("transcriptionText").removeAttribute("readonly");
+            document.getElementById("editBtn").style.display = "none";
+            document.getElementById("saveBtn").style.display = "inline";
+        });
+
+        document.getElementById("saveBtn").addEventListener("click", async function() {
+            let updatedText = document.getElementById("transcriptionText").value;
             try {
-                const query = `filterByFormula=AND({user_id}='${userId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
-                const url = `${airtableBaseURL}?${query}`;
-                console.log("Fetching from:", url);
-                const response = await fetch(url, {
-                    method: "GET",
-                    headers: { "Authorization": apiKey }
+                await fetch(airtableBaseURL, {
+                    method: "PATCH",
+                    headers: { "Authorization": apiKey, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        records: [{ id: recordId, fields: { edited_text: updatedText, is_edited: true } }]
+                    })
                 });
-                const data = await response.json();
-                
-                if (data.records.length > 0) {
-                    let record = data.records[0];
-                    recordId = record.id;
-                    transcriptionText = record.fields.transcription || "";
-                    editedText = record.fields.edited_text || "";
-                    isEdited = !!record.fields.is_edited;
-                    document.getElementById("transcriptionText").value = isEdited ? editedText : transcriptionText;
-                    document.getElementById("transcriptionText").style.display = "block";
-                    document.getElementById("editBtn").style.display = "inline";
-                    document.getElementById("copyBtn").style.display = "inline";
-                    document.getElementById("status").innerText = "Transcription Loaded!";
-                } else {
-                    document.getElementById("status").innerText = "No transcription found.";
-                }
+                document.getElementById("status").innerText = "Transcription saved successfully!";
+                document.getElementById("transcriptionText").setAttribute("readonly", "true");
+                document.getElementById("editBtn").style.display = "inline";
+                document.getElementById("saveBtn").style.display = "none";
+                isEdited = true;
+                editedText = updatedText;
             } catch (error) {
-                console.error("Fetch error:", error);
+                console.error("Save error:", error);
             }
-        }
+        });
 
         new ClipboardJS('#copyBtn').on('success', function(e) {
             alert('✅ Text copied to clipboard!');
