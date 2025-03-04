@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Recorder & Transcription</title>
     <style>
+        /* Basic styles for layout and buttons */
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
         button { font-size: 18px; padding: 10px; margin: 10px; cursor: pointer; }
         textarea { width: 90%; height: 200px; font-size: 16px; display: none; }
     </style>
+    <!-- Include Clipboard.js for copy-to-clipboard functionality -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
 </head>
 <body>
@@ -22,6 +24,7 @@
     <button id="copyBtn" data-clipboard-target="#transcriptionText" style="display: none;">📋 Copy to Clipboard</button>
     
     <script>
+        /* Initialize global variables */
         let mediaRecorder;
         let audioChunks = [];
         const webhookURL = "https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z";
@@ -33,6 +36,7 @@
         let editedText = "";
         let isEdited = false;
 
+        /* Fetches the latest transcription from Airtable */
         async function fetchTranscription() {
             try {
                 const query = `filterByFormula=AND({user_id}='${userId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
@@ -63,10 +67,12 @@
             }
         }
 
+        /* Generates a unique recording ID */
         function generateRecordingId() {
             return "rec_" + crypto.randomUUID();
         }
 
+        /* Starts recording audio */
         document.getElementById("start").addEventListener("click", async function() {
             try {
                 let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -84,6 +90,7 @@
             }
         });
 
+        /* Stops recording and uploads the file */
         document.getElementById("stop").addEventListener("click", function() {
             mediaRecorder.stop();
             mediaRecorder.onstop = async () => {
@@ -114,6 +121,7 @@
             };
         });
 
+        /* Clipboard functionality to copy transcription text */
         new ClipboardJS('#copyBtn').on('success', function(e) {
             alert('✅ Text copied to clipboard!');
             console.log('Copied successfully:', e.text);
