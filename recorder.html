@@ -32,14 +32,20 @@
         const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540";
         let userId = "admin";
         let recordId = "";
+        let transcriptionId = "";
         let transcriptionText = "";
         let editedText = "";
         let isEdited = false;
 
-        /* Fetches the latest transcription from Airtable */
+        /* Function to generate a unique ID with a prefix */
+        function generateUniqueId(prefix) {
+            return `${prefix}_${crypto.randomUUID()}`;
+        }
+
+        /* Fetches the transcription from Airtable using transcription_id */
         async function fetchTranscription() {
             try {
-                const query = `filterByFormula=AND({user_id}='${userId}')&sort[0][field]=timestamp&sort[0][direction]=desc&maxRecords=1`;
+                const query = `filterByFormula={transcription_id}='${transcriptionId}'`;
                 const url = `${airtableBaseURL}?${query}`;
                 console.log("Fetching from:", url);
                 const response = await fetch(url, {
@@ -67,11 +73,6 @@
             }
         }
 
-        /* Generates a unique recording ID */
-        function generateRecordingId() {
-            return "rec_" + crypto.randomUUID();
-        }
-
         /* Starts recording audio */
         document.getElementById("start").addEventListener("click", async function() {
             try {
@@ -79,6 +80,7 @@
                 mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
                 mediaRecorder.start();
                 audioChunks = [];
+                transcriptionId = generateUniqueId("trans");
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
@@ -96,7 +98,7 @@
             mediaRecorder.onstop = async () => {
                 let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
                 document.getElementById("status").innerText = "Uploading...";
-                let recordingId = generateRecordingId();
+                let recordingId = generateUniqueId("rec");
                 let timestamp = new Date().toISOString();
                 let fileUrl = "www.admin.com";
                 let status = "pending";
@@ -104,6 +106,7 @@
                 let formData = new FormData();
                 formData.append("file", audioBlob, "recording.mp3");
                 formData.append("recording_id", recordingId);
+                formData.append("transcription_id", transcriptionId);
                 formData.append("timestamp", timestamp);
                 formData.append("user_id", userId);
                 formData.append("file_url", fileUrl);
