@@ -40,6 +40,7 @@
 
         /* Fetches the transcription from Airtable using transcription_id */
         async function fetchTranscription() {
+            if (!transcriptionId) return; // Ensure transcriptionId is set
             try {
                 const query = `filterByFormula={transcription_id}='${transcriptionId}'`;
                 const url = `${airtableBaseURL}?${query}`;
@@ -74,6 +75,7 @@
                 mediaRecorder.start();
                 audioChunks = [];
                 transcriptionId = generateUniqueId("trans");
+                console.log("Generated transcriptionId:", transcriptionId);
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
@@ -94,6 +96,7 @@
                 let recordingId = generateUniqueId("rec");
                 let timestamp = new Date().toISOString().replace(/:/g, "-"); // Replace invalid ':' with '-'
                 let uniqueFilename = `${recordingId}_${timestamp}.mp3`; // Create unique filename
+                console.log("Generated filename:", uniqueFilename);
                 let fileUrl = "www.admin.com";
                 let status = "pending";
 
