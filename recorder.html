@@ -42,6 +42,13 @@
             return `${prefix}_${crypto.randomUUID()}`;
         }
 
+        /* Converts a Blob to Base64 for storage */
+        function blobToBase64(blob, callback) {
+            let reader = new FileReader();
+            reader.onloadend = () => callback(reader.result);
+            reader.readAsDataURL(blob);
+        }
+
         /* Starts recording audio */
         document.getElementById("start").addEventListener("click", async function() {
             try {
@@ -64,7 +71,10 @@
                     let audioURL = URL.createObjectURL(audioBlob);
                     document.getElementById("audioPlayback").src = audioURL;
                     document.getElementById("audioPlayback").style.display = "block";
-                    localStorage.setItem("pendingAudio", audioURL);
+                    blobToBase64(audioBlob, (base64) => {
+                        localStorage.setItem("pendingAudio", base64); // Store audio for reupload
+                        document.getElementById("retryUpload").style.display = "block";
+                    });
                     document.getElementById("status").innerText = "Uploading...";
                     uploadRecording(audioBlob);
                 };
@@ -123,7 +133,7 @@
                 setTimeout(fetchTranscription, 5000);
             } catch (error) {
                 console.error("Retry Upload Error:", error);
-                document.getElementById("status").innerText = "Upload Failed! Retry below.";
+                document.getElementById("status").innerText = "Retry Upload Failed!";
                 document.getElementById("retryUpload").style.display = "block";
             }
         }
