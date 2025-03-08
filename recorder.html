@@ -14,7 +14,7 @@
 </head>
 <body>
     <h1>Audio Recorder & Transcription</h1>
-    <p id="version">Version 1.3.1</p> <!-- Version display to ensure cache updates -->
+    <p id="version">Version 1.3.2</p> <!-- Version display to ensure cache updates -->
 
     <button id="start">Start Recording</button>
     <button id="stop" disabled>Stop Recording</button>
@@ -117,7 +117,7 @@
         });
 
         /* ✅ Upload Recording */
-        async function uploadRecording(audioBlob, transcriptionId, updateStatus) {
+        async function uploadRecording(audioBlob, transcriptionId) {
     let recordingId = `rec_${crypto.randomUUID()}`;
     let timestamp = new Date().toISOString().replace(/:/g, "-");
     let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
@@ -133,16 +133,24 @@
         console.log("Starting upload process...");
         let response = await fetch(webhookURL, { method: "POST", body: formData });
 
-        // ✅ Log raw response before attempting to parse it
+        // ✅ Log raw response before parsing
         let rawResponse = await response.text();
-        console.log("Raw Response:", rawResponse);
+        console.log("Raw Response from Make.com:", rawResponse);
 
-        // ✅ Check if response is JSON before parsing
+        // ✅ If Make.com returns "Accepted", treat it as success
+        if (rawResponse.trim() === "Accepted") {
+            console.warn("Make.com responded with 'Accepted'. Waiting for transcription...");
+            document.getElementById("status").innerText = "Upload Accepted. Processing...";
+            setTimeout(fetchTranscription, 5000); // Wait and retry fetching
+            return;
+        }
+
+        // ✅ Try parsing JSON only if response is valid JSON
         let jsonResponse;
         try {
             jsonResponse = JSON.parse(rawResponse);
         } catch (jsonError) {
-            throw new Error("Server response is not valid JSON: " + rawResponse);
+            throw new Error("Make.com response is not JSON: " + rawResponse);
         }
 
         // ✅ Check if transcription was received
@@ -150,7 +158,7 @@
             console.log("Upload successful, transcript received:", jsonResponse.transcription);
             document.getElementById("status").innerText = "Upload Successful!";
             document.getElementById("retryUpload").style.display = "none";
-            fetchTranscription(transcriptionId, updateStatus);
+            fetchTranscription(transcriptionId);
         } else {
             throw new Error("No transcription received from Make.com");
         }
