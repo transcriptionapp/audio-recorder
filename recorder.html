@@ -42,61 +42,59 @@
             return `${prefix}_${crypto.randomUUID()}`;
         }
 
-        /* Converts a Blob to Base64 for storage */
-        function blobToBase64(blob, callback) {
-            let reader = new FileReader();
-            reader.onloadend = () => callback(reader.result);
-            reader.readAsDataURL(blob);
-        }
-
-        /* Converts Base64 back to Blob */
-        function base64ToBlob(base64, mimeType) {
-            let byteCharacters = atob(base64.split(',')[1]);
-            let byteArrays = [];
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteArrays.push(byteCharacters.charCodeAt(i));
-            }
-            return new Blob([new Uint8Array(byteArrays)], { type: mimeType });
-        }
-
         /* Starts recording audio */
         document.getElementById("start").addEventListener("click", async function() {
             try {
+                console.log("Requesting microphone access...");
                 let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+                console.log("MediaRecorder initialized.");
                 audioChunks = [];
                 transcriptionId = generateUniqueId("trans");
                 console.log("Generated transcriptionId:", transcriptionId);
 
                 mediaRecorder.ondataavailable = event => {
+                    console.log("Data available:", event.data);
                     audioChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = async () => {
+                    console.log("onstop event triggered.");
                     if (audioChunks.length === 0) {
                         console.error("No audio recorded.");
                         return;
                     }
                     let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
+                    console.log("Audio Blob created:", audioBlob);
                     let audioURL = URL.createObjectURL(audioBlob);
                     document.getElementById("audioPlayback").src = audioURL;
                     document.getElementById("audioPlayback").style.display = "block";
-                    blobToBase64(audioBlob, (base64) => {
-                        localStorage.setItem("pendingAudio", base64);
-                        document.getElementById("retryUpload").style.display = "block";
-                        console.log("Saved audio to localStorage:", base64.substring(0, 30) + "...");
-                    });
+                    localStorage.setItem("pendingAudio", audioURL);
+                    document.getElementById("retryUpload").style.display = "block";
+                    console.log("Saved audio to localStorage:", audioURL);
                     document.getElementById("status").innerText = "Uploading...";
                     uploadRecording(audioBlob);
                 };
 
                 mediaRecorder.start();
+                console.log("Recording started.");
                 document.getElementById("start").disabled = true;
                 document.getElementById("stop").disabled = false;
                 document.getElementById("status").innerText = "Recording...";
             } catch (error) {
                 console.error("Recording error:", error);
             }
+        });
+
+        /* Stops recording */
+        document.getElementById("stop").addEventListener("click", function() {
+            if (!mediaRecorder || mediaRecorder.state !== "recording") {
+                console.error("Stop button pressed, but mediaRecorder is not recording.");
+                return;
+            }
+            console.log("Stopping recording...");
+            mediaRecorder.stop();
+            console.log("Recording stopped.");
         });
 
         /* Retry Upload Functionality */
@@ -107,7 +105,7 @@
                 alert("⚠️ No pending audio found for re-upload.");
                 return;
             }
-            let audioBlob = base64ToBlob(pendingAudio, "audio/mpeg");
+            let audioBlob = await fetch(pendingAudio).then(res => res.blob());
             uploadRecording(audioBlob);
         });
 
@@ -129,6 +127,7 @@
             formData.append("status", status);
             
             try {
+                console.log("Uploading file:", uniqueFilename);
                 await fetch(webhookURL, { method: "POST", body: formData });
                 localStorage.removeItem("pendingAudio");
                 console.log("Upload successful, removed pending audio.");
