@@ -123,7 +123,8 @@
                 setTimeout(fetchTranscription, 5000);
             } catch (error) {
                 console.error("Retry Upload Error:", error);
-                document.getElementById("status").innerText = "Retry Upload Failed!";
+                document.getElementById("status").innerText = "Upload Failed! Retry below.";
+                document.getElementById("retryUpload").style.display = "block";
             }
         }
     </script>
