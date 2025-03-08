@@ -117,40 +117,49 @@
         });
 
         /* ✅ Upload Recording */
-        async function uploadRecording(audioBlob, recordingId, transcriptionId, timestamp) {
-            let formData = new FormData();
-            formData.append("file", audioBlob, `${recordingId}_${timestamp}.mp3`);
-            formData.append("recording_id", recordingId);
-            formData.append("transcription_id", transcriptionId);
-            formData.append("timestamp", timestamp);
-            formData.append("user_id", userId);
+        async function uploadRecording(audioBlob, transcriptionId, updateStatus) {
+    let recordingId = `rec_${crypto.randomUUID()}`;
+    let timestamp = new Date().toISOString().replace(/:/g, "-");
+    let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
 
-            try {
-                console.log("Starting upload process...");
-                let response = await fetch(webhookURL, { method: "POST", body: formData });
+    let formData = new FormData();
+    formData.append("file", audioBlob, uniqueFilename);
+    formData.append("recording_id", recordingId);
+    formData.append("transcription_id", transcriptionId);
+    formData.append("timestamp", timestamp);
+    formData.append("user_id", userId);
 
-                if (!response.ok) {
-                    throw new Error(`Upload failed with status ${response.status}`);
-                }
+    try {
+        console.log("Starting upload process...");
+        let response = await fetch(webhookURL, { method: "POST", body: formData });
 
-                let result = await response.json();
-                
-                if (result.transcription) {
-                    console.log("Upload successful, transcript received:", result.transcription);
-                    document.getElementById("status").innerText = "Upload Successful!";
-                    document.getElementById("retryUpload").style.display = "none";
-                    fetchTranscription();
-                } else {
-                    console.warn("Upload successful, but no transcription received.");
-                    document.getElementById("status").innerText = "Failed to Transcribe!";
-                    document.getElementById("retryUpload").style.display = "inline";
-                }
-            } catch (error) {
-                console.error("Upload failed:", error);
-                document.getElementById("status").innerText = "Upload Failed!";
-                document.getElementById("retryUpload").style.display = "inline";
-            }
+        // ✅ Log raw response before attempting to parse it
+        let rawResponse = await response.text();
+        console.log("Raw Response:", rawResponse);
+
+        // ✅ Check if response is JSON before parsing
+        let jsonResponse;
+        try {
+            jsonResponse = JSON.parse(rawResponse);
+        } catch (jsonError) {
+            throw new Error("Server response is not valid JSON: " + rawResponse);
         }
+
+        // ✅ Check if transcription was received
+        if (jsonResponse.transcription) {
+            console.log("Upload successful, transcript received:", jsonResponse.transcription);
+            document.getElementById("status").innerText = "Upload Successful!";
+            document.getElementById("retryUpload").style.display = "none";
+            fetchTranscription(transcriptionId, updateStatus);
+        } else {
+            throw new Error("No transcription received from Make.com");
+        }
+    } catch (error) {
+        console.error("Upload failed:", error);
+        document.getElementById("status").innerText = "Upload Failed!";
+        document.getElementById("retryUpload").style.display = "inline";
+    }
+}
 
         /* ✅ Retry Upload */
         document.getElementById("retryUpload").addEventListener("click", async function() {
