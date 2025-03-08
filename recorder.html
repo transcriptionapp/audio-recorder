@@ -92,45 +92,43 @@
             }
         });
 
-        /* Stops recording and uploads the file with a unique filename */
-        document.getElementById("stop").addEventListener("click", function() {
-            mediaRecorder.stop();
-            mediaRecorder.onstop = async () => {
-                let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
-                let audioURL = URL.createObjectURL(audioBlob);
-                document.getElementById("audioPlayback").src = audioURL;
-                document.getElementById("audioPlayback").style.display = "block";
-                localStorage.setItem("pendingAudio", audioURL); // Save locally
-                document.getElementById("status").innerText = "Uploading...";
-                let recordingId = generateUniqueId("rec");
-                let timestamp = new Date().toISOString().replace(/:/g, "-");
-                let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
-                console.log("Generated filename:", uniqueFilename);
-                let fileUrl = "www.admin.com";
-                let status = "pending";
-
-                let formData = new FormData();
-                formData.append("file", audioBlob, uniqueFilename);
-                formData.append("recording_id", recordingId);
-                formData.append("transcription_id", transcriptionId);
-                formData.append("timestamp", timestamp);
-                formData.append("user_id", userId);
-                formData.append("file_url", fileUrl);
-                formData.append("status", status);
-                
-                try {
-                    await fetch(webhookURL, { method: "POST", body: formData });
-                    localStorage.removeItem("pendingAudio"); // Remove on success
-                    setTimeout(fetchTranscription, 5000);
-                } catch (error) {
-                    console.error("Upload error:", error);
-                    document.getElementById("status").innerText = "Upload Failed!";
-                    document.getElementById("retryUpload").style.display = "block";
-                }
-                document.getElementById("start").disabled = false;
-                document.getElementById("stop").disabled = true;
-            };
+        /* Retry Upload Functionality */
+        document.getElementById("retryUpload").addEventListener("click", async function() {
+            let pendingAudio = localStorage.getItem("pendingAudio");
+            if (!pendingAudio) {
+                alert("⚠️ No pending audio found for re-upload.");
+                return;
+            }
+            let audioBlob = await fetch(pendingAudio).then(res => res.blob());
+            uploadRecording(audioBlob);
         });
+
+        /* Function to Upload Recording */
+        async function uploadRecording(audioBlob) {
+            let recordingId = generateUniqueId("rec");
+            let timestamp = new Date().toISOString().replace(/:/g, "-");
+            let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
+            let fileUrl = "www.admin.com";
+            let status = "pending";
+
+            let formData = new FormData();
+            formData.append("file", audioBlob, uniqueFilename);
+            formData.append("recording_id", recordingId);
+            formData.append("transcription_id", transcriptionId);
+            formData.append("timestamp", timestamp);
+            formData.append("user_id", userId);
+            formData.append("file_url", fileUrl);
+            formData.append("status", status);
+            
+            try {
+                await fetch(webhookURL, { method: "POST", body: formData });
+                localStorage.removeItem("pendingAudio"); // Clear saved file on success
+                setTimeout(fetchTranscription, 5000);
+            } catch (error) {
+                console.error("Retry Upload Error:", error);
+                document.getElementById("status").innerText = "Retry Upload Failed!";
+            }
+        }
     </script>
 </body>
 </html>
