@@ -16,7 +16,7 @@
 </head>
 <body>
     <h1>Audio Recorder & Transcription</h1>
-    <p id="version">Version: 1.0.8</p> <!-- Version Display -->
+    <p id="version">Version: 1.0.9</p> <!-- Version Display -->
     <button id="start">Start Recording</button>
     <button id="stop" disabled>Stop Recording</button>
     <button id="retryUpload" style="display: none;">Retry Upload</button>
@@ -37,13 +37,14 @@
         let recordId = "";
         let transcriptionId = "";
         let transcriptionText = "";
+        let lastAudioBlob = null;
 
         /* Function to generate a unique ID with a prefix */
         function generateUniqueId(prefix) {
             return `${prefix}_${crypto.randomUUID()}`;
         }
 
-        /* Upload recording function */
+        /* Upload recording function with failure handling */
         async function uploadRecording(audioBlob, isRetry = false) {
             console.log(isRetry ? "Retrying upload..." : "Starting upload process...");
             let recordingId = generateUniqueId("rec");
@@ -59,8 +60,11 @@
             formData.append("user_id", userId);
             
             try {
-                await fetch(webhookURL, { method: "POST", body: formData });
-                console.log("Upload request sent to make.com");
+                let response = await fetch(webhookURL, { method: "POST", body: formData });
+                if (!response.ok) {
+                    throw new Error(`Upload failed with status: ${response.status}`);
+                }
+                console.log("Upload successful, response received");
                 document.getElementById("status").innerText = "Upload Successful!";
                 localStorage.removeItem("pendingAudio");
                 document.getElementById("retryUpload").style.display = "none";
@@ -68,6 +72,7 @@
                 console.error("Upload failed:", error);
                 document.getElementById("status").innerText = "Upload Failed!";
                 localStorage.setItem("pendingAudio", URL.createObjectURL(audioBlob));
+                lastAudioBlob = audioBlob; // Save for retry
                 document.getElementById("retryUpload").style.display = "block";
             }
         }
@@ -94,6 +99,7 @@
                     console.log("Audio Blob created:", audioBlob);
                     document.getElementById("audioPlayback").src = URL.createObjectURL(audioBlob);
                     document.getElementById("audioPlayback").style.display = "block";
+                    lastAudioBlob = audioBlob; // Save for retry
                     uploadRecording(audioBlob);
                 };
 
