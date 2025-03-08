@@ -49,6 +49,16 @@
             reader.readAsDataURL(blob);
         }
 
+        /* Converts Base64 back to Blob */
+        function base64ToBlob(base64, mimeType) {
+            let byteCharacters = atob(base64.split(',')[1]);
+            let byteArrays = [];
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteArrays.push(byteCharacters.charCodeAt(i));
+            }
+            return new Blob([new Uint8Array(byteArrays)], { type: mimeType });
+        }
+
         /* Starts recording audio */
         document.getElementById("start").addEventListener("click", async function() {
             try {
@@ -72,8 +82,9 @@
                     document.getElementById("audioPlayback").src = audioURL;
                     document.getElementById("audioPlayback").style.display = "block";
                     blobToBase64(audioBlob, (base64) => {
-                        localStorage.setItem("pendingAudio", base64); // Store audio for reupload
+                        localStorage.setItem("pendingAudio", base64);
                         document.getElementById("retryUpload").style.display = "block";
+                        console.log("Saved audio to localStorage:", base64.substring(0, 30) + "...");
                     });
                     document.getElementById("status").innerText = "Uploading...";
                     uploadRecording(audioBlob);
@@ -88,25 +99,15 @@
             }
         });
 
-        /* Stops recording */
-        document.getElementById("stop").addEventListener("click", function() {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                document.getElementById("start").disabled = false;
-                document.getElementById("stop").disabled = true;
-            } else {
-                console.error("MediaRecorder is not in recording state.");
-            }
-        });
-
         /* Retry Upload Functionality */
         document.getElementById("retryUpload").addEventListener("click", async function() {
             let pendingAudio = localStorage.getItem("pendingAudio");
+            console.log("Attempting to retrieve audio from localStorage:", pendingAudio);
             if (!pendingAudio) {
                 alert("⚠️ No pending audio found for re-upload.");
                 return;
             }
-            let audioBlob = await fetch(pendingAudio).then(res => res.blob());
+            let audioBlob = base64ToBlob(pendingAudio, "audio/mpeg");
             uploadRecording(audioBlob);
         });
 
@@ -130,6 +131,7 @@
             try {
                 await fetch(webhookURL, { method: "POST", body: formData });
                 localStorage.removeItem("pendingAudio");
+                console.log("Upload successful, removed pending audio.");
                 setTimeout(fetchTranscription, 5000);
             } catch (error) {
                 console.error("Retry Upload Error:", error);
