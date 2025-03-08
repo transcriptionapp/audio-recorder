@@ -16,7 +16,7 @@
 </head>
 <body>
     <h1>Audio Recorder & Transcription</h1>
-    <p id="version">Version: 1.0.7</p> <!-- Version Display -->
+    <p id="version">Version: 1.0.8</p> <!-- Version Display -->
     <button id="start">Start Recording</button>
     <button id="stop" disabled>Stop Recording</button>
     <button id="retryUpload" style="display: none;">Retry Upload</button>
@@ -58,11 +58,8 @@
             formData.append("timestamp", timestamp);
             formData.append("user_id", userId);
             
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
-
             try {
-                await fetch(webhookURL, { method: "POST", body: formData, signal: controller.signal });
+                await fetch(webhookURL, { method: "POST", body: formData });
                 console.log("Upload request sent to make.com");
                 document.getElementById("status").innerText = "Upload Successful!";
                 localStorage.removeItem("pendingAudio");
@@ -72,8 +69,6 @@
                 document.getElementById("status").innerText = "Upload Failed!";
                 localStorage.setItem("pendingAudio", URL.createObjectURL(audioBlob));
                 document.getElementById("retryUpload").style.display = "block";
-            } finally {
-                clearTimeout(timeoutId);
             }
         }
 
@@ -91,6 +86,15 @@
                 mediaRecorder.ondataavailable = event => {
                     console.log("Data available:", event.data);
                     audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    console.log("Recording stopped.");
+                    let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
+                    console.log("Audio Blob created:", audioBlob);
+                    document.getElementById("audioPlayback").src = URL.createObjectURL(audioBlob);
+                    document.getElementById("audioPlayback").style.display = "block";
+                    uploadRecording(audioBlob);
                 };
 
                 mediaRecorder.start();
