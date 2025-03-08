@@ -47,58 +47,38 @@
 
         /* ✅ Fetch Transcription */
 /* Fetches the transcription from Airtable using recording_id */
-async function fetchTranscription() {
+async function fetchTranscription(retries = 5) {
     if (!recordingId) {
-        console.warn("❌ Fetch aborted: recordingId is missing.");
+        console.error("fetchTranscription error: recordingId is not set.");
         return;
     }
-
     try {
-        console.log("🔍 Fetching transcription for recordingId:", recordingId);
-
-        // ✅ Use recording_id instead of transcription_id
+        console.log("Fetching transcription for recordingId:", recordingId);
         const query = `filterByFormula={recording_id}='${recordingId}'`;
-        const fetchUrl = `${airtableBaseURL}?${query}`;
-
-        console.log("🌐 Sending request to Airtable:", fetchUrl);
-
-        const response = await fetch(fetchUrl, {
+        const response = await fetch(`${airtableBaseURL}?${query}`, {
             method: "GET",
             headers: { "Authorization": apiKey }
         });
-
-        console.log("✅ Received response from Airtable. Parsing...");
         const data = await response.json();
-
-        console.log("📄 Airtable response data:", data);
 
         if (data.records.length > 0) {
             let record = data.records[0];
-            recordId = record.id;
-            transcriptionText = record.fields.transcription || "";
-
-            if (transcriptionText.trim() === "") {
-                console.warn("⚠️ Transcription found but empty.");
-                return;
-            }
-
-            // ✅ Update UI with transcription
+            let transcriptionText = record.fields.transcription || "";
             document.getElementById("transcriptionText").value = transcriptionText;
             document.getElementById("transcriptionText").style.display = "block";
             document.getElementById("copyBtn").style.display = "inline";
-            document.getElementById("status").innerText = "✅ Transcription Loaded!";
-            
-            console.log("🎉 Transcription successfully displayed:", transcriptionText);
-
+            document.getElementById("status").innerText = "Transcription Loaded!";
+            console.log("Transcription received:", transcriptionText);
         } else {
-            console.warn("⚠️ No transcription found in Airtable. Retrying in 5s...");
-            document.getElementById("status").innerText = "Processing transcription...";
-
-            // ✅ Keep polling every 5 seconds until transcription appears
-            setTimeout(fetchTranscription, 5000);
+            if (retries > 0) {
+                console.warn(`No transcription found. Retrying... (${retries} left)`);
+                setTimeout(() => fetchTranscription(retries - 1), 5000);
+            } else {
+                document.getElementById("status").innerText = "Transcription not found.";
+            }
         }
     } catch (error) {
-        console.error("❌ Fetch transcription error:", error);
+        console.error("Fetch transcription error:", error);
     }
 }
 
