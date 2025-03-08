@@ -9,6 +9,7 @@
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
         button { font-size: 18px; padding: 10px; margin: 10px; cursor: pointer; }
         textarea { width: 90%; height: 200px; font-size: 16px; display: none; }
+        audio { display: none; margin-top: 10px; }
     </style>
     <!-- Include Clipboard.js for copy-to-clipboard functionality -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
@@ -22,6 +23,7 @@
     <p id="status">Press 'Start Recording'</p>
     <textarea id="transcriptionText" readonly></textarea><br>
     <button id="copyBtn" data-clipboard-target="#transcriptionText" style="display: none;">📋 Copy to Clipboard</button>
+    <audio id="audioPlayback" controls style="display: none;"></audio>
     
     <script>
         /* Initialize global variables */
@@ -94,7 +96,10 @@
             mediaRecorder.stop();
             mediaRecorder.onstop = async () => {
                 let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
-                localStorage.setItem("pendingAudio", URL.createObjectURL(audioBlob)); // Save locally
+                let audioURL = URL.createObjectURL(audioBlob);
+                document.getElementById("audioPlayback").src = audioURL;
+                document.getElementById("audioPlayback").style.display = "block";
+                localStorage.setItem("pendingAudio", audioURL); // Save locally
                 document.getElementById("status").innerText = "Uploading...";
                 let recordingId = generateUniqueId("rec");
                 let timestamp = new Date().toISOString().replace(/:/g, "-");
@@ -124,21 +129,6 @@
                 document.getElementById("start").disabled = false;
                 document.getElementById("stop").disabled = true;
             };
-        });
-
-        /* Retry Upload */
-        document.getElementById("retryUpload").addEventListener("click", async function() {
-            let pendingBlob = await fetch(localStorage.getItem("pendingAudio")).then(res => res.blob());
-            uploadRecording(pendingBlob);
-        });
-
-        /* Clipboard functionality to copy transcription text */
-        new ClipboardJS('#copyBtn').on('success', function(e) {
-            alert('✅ Text copied to clipboard!');
-            console.log('Copied successfully:', e.text);
-            e.clearSelection();
-        }).on('error', function(e) {
-            console.error('Clipboard.js error:', e);
         });
     </script>
 </body>
