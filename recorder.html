@@ -14,7 +14,7 @@
 </head>
 <body>
     <h1>Audio Recorder & Transcription</h1>
-    <p id="version">Version 1.3.5</p> <!-- Version display to ensure cache updates -->
+    <p id="version">Version 1.3.6</p> <!-- Version display to ensure cache updates -->
 
     <button id="start">Start Recording</button>
     <button id="stop" disabled>Stop Recording</button>
@@ -35,9 +35,9 @@
         const apiKey = "Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540";
         let userId = "admin";
         let recordId = "";
-        let transcriptionId = "";
         let lastRecordedBlob = null; // Store the last recording in case upload fails
-        let lastRecordingId = "";
+        let recordingId = "";  // Make sure this is a global variable
+        let transcriptionId = "";
         let lastTimestamp = "";
 
         /* ✅ Function to Generate Unique ID */
@@ -124,14 +124,14 @@ async function fetchTranscription(retries = 5) {
         });
 
         /* ✅ Upload Recording */
-        async function uploadRecording(audioBlob, transcriptionId) {
-    let recordingId = `rec_${crypto.randomUUID()}`;
+        async function uploadRecording(audioBlob) {
+    recordingId = `rec_${crypto.randomUUID()}`;  // Ensure it is assigned
     let timestamp = new Date().toISOString().replace(/:/g, "-");
     let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
 
     let formData = new FormData();
     formData.append("file", audioBlob, uniqueFilename);
-    formData.append("recording_id", recordingId);
+    formData.append("recording_id", recordingId);  // ✅ Assigned here
     formData.append("transcription_id", transcriptionId);
     formData.append("timestamp", timestamp);
     formData.append("user_id", userId);
@@ -140,32 +140,23 @@ async function fetchTranscription(retries = 5) {
         console.log("Starting upload process...");
         let response = await fetch(webhookURL, { method: "POST", body: formData });
 
-        // ✅ Log raw response before parsing
         let rawResponse = await response.text();
         console.log("Raw Response from Make.com:", rawResponse);
 
-        // ✅ If Make.com returns "Accepted", treat it as success
         if (rawResponse.trim() === "Accepted") {
             console.warn("Make.com responded with 'Accepted'. Waiting for transcription...");
             document.getElementById("status").innerText = "Upload Accepted. Processing...";
-            setTimeout(fetchTranscription, 5000); // Wait and retry fetching
+
+            setTimeout(() => fetchTranscription(recordingId), 5000);  // ✅ Pass the ID properly
             return;
         }
 
-        // ✅ Try parsing JSON only if response is valid JSON
-        let jsonResponse;
-        try {
-            jsonResponse = JSON.parse(rawResponse);
-        } catch (jsonError) {
-            throw new Error("Make.com response is not JSON: " + rawResponse);
-        }
-
-        // ✅ Check if transcription was received
+        let jsonResponse = JSON.parse(rawResponse);
         if (jsonResponse.transcription) {
             console.log("Upload successful, transcript received:", jsonResponse.transcription);
             document.getElementById("status").innerText = "Upload Successful!";
             document.getElementById("retryUpload").style.display = "none";
-            fetchTranscription(transcriptionId);
+            fetchTranscription(recordingId);  // ✅ Pass the ID properly
         } else {
             throw new Error("No transcription received from Make.com");
         }
