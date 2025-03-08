@@ -65,6 +65,7 @@
                     document.getElementById("status").innerText = "Transcription Loaded!";
                 } else {
                     document.getElementById("status").innerText = "No transcription found.";
+                    document.getElementById("retryUpload").style.display = "block";
                 }
             } catch (error) {
                 console.error("Fetch error:", error);
