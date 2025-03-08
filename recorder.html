@@ -102,15 +102,16 @@
             let pendingAudio = localStorage.getItem("pendingAudio");
             console.log("Attempting to retrieve audio from localStorage:", pendingAudio);
             if (!pendingAudio) {
+                console.error("No pending audio found. Cannot retry upload.");
                 alert("⚠️ No pending audio found for re-upload.");
                 return;
             }
             let audioBlob = await fetch(pendingAudio).then(res => res.blob());
-            uploadRecording(audioBlob);
+            uploadRecording(audioBlob, true);
         });
 
         /* Function to Upload Recording */
-        async function uploadRecording(audioBlob) {
+        async function uploadRecording(audioBlob, isRetry = false) {
             let recordingId = generateUniqueId("rec");
             let timestamp = new Date().toISOString().replace(/:/g, "-");
             let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
@@ -129,8 +130,10 @@
             try {
                 console.log("Uploading file:", uniqueFilename);
                 await fetch(webhookURL, { method: "POST", body: formData });
-                localStorage.removeItem("pendingAudio");
-                console.log("Upload successful, removed pending audio.");
+                if (!isRetry) {
+                    localStorage.removeItem("pendingAudio");
+                    console.log("Upload successful, removed pending audio.");
+                }
                 setTimeout(fetchTranscription, 5000);
             } catch (error) {
                 console.error("Retry Upload Error:", error);
