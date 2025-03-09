@@ -40,7 +40,6 @@
     // Utility Functions
     const updateStatus = (msg) => statusEl.textContent = msg;
 
-    // Airtable API Call
     async function airtableUpdateFollowUpRequested() {
         const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
             method: 'POST',
@@ -94,26 +93,20 @@
                 'Authorization': AIRTABLE_API_KEY,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                fields: { follow_up_status: 'completed' }
-            })
+            body: JSON.stringify({ fields: { follow_up_status: 'completed' } })
         });
     }
 
-    // Event Handlers
     generateBtn.onclick = async () => {
         updateStatus('Requesting follow-up email...');
         generateBtn.disabled = true;
-
-        // Update Airtable to mark email requested
         await airtableUpdateFollowUpRequested();
 
-        // Fetch transcription text (assuming stored in Airtable Transcriptions)
         const transRes = await fetch(`${AIRTABLE_BASE_URL}/Transcriptions/${transcription_id}`, {
             headers: {'Authorization': AIRTABLE_API_KEY}
         });
         const transData = await transRes.json();
-        const transcriptionText = transData.fields.edited_text || transData.fields.raw_text;
+        const transcriptionText = transData.fields.raw_text;
 
         const success = await triggerMakeWebhook(transcriptionText);
         if (success) {
@@ -147,11 +140,23 @@
                 copyBtn.dataset.followupId = result.followup_id;
                 copyBtn.classList.remove('hidden');
             }
-        }, 5000); // Check every 5 seconds
+        }, 5000);
     }
 
-    // Initialization
-    updateStatus('Ready to generate.');
+    async function init() {
+        updateStatus('Fetching existing email...');
+        const existingEmail = await fetchFollowUpEmail();
+        if (existingEmail) {
+            emailTextEl.value = existingEmail.emailText;
+            copyBtn.dataset.followupId = existingEmail.followup_id;
+            copyBtn.classList.remove('hidden');
+            updateStatus('Email ready!');
+        } else {
+            updateStatus('Ready to generate.');
+        }
+    }
+
+    init();
     </script>
 </body>
 </html>
