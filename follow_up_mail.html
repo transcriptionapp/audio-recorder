@@ -41,6 +41,8 @@
     const updateStatus = (msg) => statusEl.textContent = msg;
 
     async function airtableUpdateFollowUpRequested() {
+        if (!recording_id) throw new Error('Missing recording ID');
+
         const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
             method: 'POST',
             headers: {
@@ -73,11 +75,11 @@
     }
 
     async function fetchFollowUpEmail() {
-        const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula={recording_id}='${recording_id}'`, {
+        const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recording_id}'`), {
             headers: {'Authorization': AIRTABLE_API_KEY}
         });
         const data = await res.json();
-        if (data.records.length && data.records[0].fields.email_follow_up_text) {
+        if (data.records && data.records.length && data.records[0].fields.email_follow_up_text) {
             return {
                 emailText: data.records[0].fields.email_follow_up_text,
                 followup_id: data.records[0].id
@@ -100,21 +102,16 @@
     generateBtn.onclick = async () => {
         updateStatus('Requesting follow-up email...');
         generateBtn.disabled = true;
-        await airtableUpdateFollowUpRequested();
+        retryBtn.classList.add('hidden');
 
-        const transRes = await fetch(`${AIRTABLE_BASE_URL}/Transcriptions/${transcription_id}`, {
-            headers: {'Authorization': AIRTABLE_API_KEY}
-        });
-        const transData = await transRes.json();
-        const transcriptionText = transData.fields.raw_text;
-
-        const success = await triggerMakeWebhook(transcriptionText);
-        if (success) {
-            updateStatus('Generating email...');
+        try {
+            await airtableUpdateFollowUpRequested();
+            updateStatus('Follow-up is being created...');
             pollForEmail();
-        } else {
-            updateStatus('Webhook failed. Please retry.');
+        } catch (error) {
+            updateStatus('Error requesting follow-up. Please retry.');
             retryBtn.classList.remove('hidden');
+            generateBtn.disabled = false;
         }
     };
 
@@ -131,7 +128,9 @@
     };
 
     async function pollForEmail() {
+        let attempts = 0;
         const interval = setInterval(async () => {
+            attempts++;
             const result = await fetchFollowUpEmail();
             if (result) {
                 clearInterval(interval);
@@ -139,24 +138,16 @@
                 updateStatus('Email ready!');
                 copyBtn.dataset.followupId = result.followup_id;
                 copyBtn.classList.remove('hidden');
+            } else if (attempts >= 4) { // after 20 seconds (4x 5s)
+                clearInterval(interval);
+                updateStatus('No follow-up found. Please retry.');
+                retryBtn.classList.remove('hidden');
+                generateBtn.disabled = false;
             }
         }, 5000);
     }
 
-    async function init() {
-        updateStatus('Fetching existing email...');
-        const existingEmail = await fetchFollowUpEmail();
-        if (existingEmail) {
-            emailTextEl.value = existingEmail.emailText;
-            copyBtn.dataset.followupId = existingEmail.followup_id;
-            copyBtn.classList.remove('hidden');
-            updateStatus('Email ready!');
-        } else {
-            updateStatus('Ready to generate.');
-        }
-    }
-
-    init();
+    updateStatus('Ready to generate.');
     </script>
 </body>
 </html>
