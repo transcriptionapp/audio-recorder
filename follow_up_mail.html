@@ -40,6 +40,7 @@
     // Utility Functions
     const updateStatus = (msg) => statusEl.textContent = msg;
 
+    // Request Airtable to create a follow-up request
     async function airtableUpdateFollowUpRequested() {
         if (!recording_id) throw new Error('Missing recording ID');
 
@@ -57,9 +58,10 @@
                 }
             })
         });
-        return res.json();
+        console.log('Airtable follow-up requested response:', await res.json());
     }
 
+    // Trigger webhook at Make.com
     async function triggerMakeWebhook(transcriptionText) {
         const res = await fetch(MAKE_WEBHOOK_URL, {
             method: 'POST',
@@ -71,14 +73,17 @@
                 user_id
             })
         });
+        console.log('Webhook response status:', res.status);
         return res.ok;
     }
 
+    // Fetch follow-up email from Airtable
     async function fetchFollowUpEmail() {
-        const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recording_id}'`), {
-            headers: {'Authorization': AIRTABLE_API_KEY}
-        });
+        const url = `${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recording_id}'`);
+        const res = await fetch(url, { headers: {'Authorization': AIRTABLE_API_KEY} });
         const data = await res.json();
+        console.log('Fetched follow-up email data:', data);
+
         if (data.records && data.records.length && data.records[0].fields.email_follow_up_text) {
             return {
                 emailText: data.records[0].fields.email_follow_up_text,
@@ -88,6 +93,7 @@
         return null;
     }
 
+    // Mark follow-up as completed
     async function markFollowUpCompleted(followup_id) {
         await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups/${followup_id}`, {
             method: 'PATCH',
@@ -97,8 +103,10 @@
             },
             body: JSON.stringify({ fields: { follow_up_status: 'completed' } })
         });
+        console.log('Marked follow-up as completed:', followup_id);
     }
 
+    // Handle generate button click
     generateBtn.onclick = async () => {
         updateStatus('Requesting follow-up email...');
         generateBtn.disabled = true;
@@ -109,6 +117,7 @@
             updateStatus('Follow-up is being created...');
             pollForEmail();
         } catch (error) {
+            console.error('Error in generateBtn:', error);
             updateStatus('Error requesting follow-up. Please retry.');
             retryBtn.classList.remove('hidden');
             generateBtn.disabled = false;
@@ -127,10 +136,12 @@
         await markFollowUpCompleted(copyBtn.dataset.followupId);
     };
 
+    // Periodically poll for the generated follow-up email
     async function pollForEmail() {
         let attempts = 0;
         const interval = setInterval(async () => {
             attempts++;
+            console.log('Polling attempt:', attempts);
             const result = await fetchFollowUpEmail();
             if (result) {
                 clearInterval(interval);
@@ -138,7 +149,7 @@
                 updateStatus('Email ready!');
                 copyBtn.dataset.followupId = result.followup_id;
                 copyBtn.classList.remove('hidden');
-            } else if (attempts >= 4) { // after 20 seconds (4x 5s)
+            } else if (attempts >= 4) { // after 20 seconds
                 clearInterval(interval);
                 updateStatus('No follow-up found. Please retry.');
                 retryBtn.classList.remove('hidden');
