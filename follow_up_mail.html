@@ -26,7 +26,7 @@
 <body class="bg-gray-50 p-4">
     <div class="max-w-lg mx-auto mt-6 p-4 bg-white shadow rounded-lg">
         <h1 class="text-xl font-bold mb-4">AI Follow-Up Email</h1>
-        <p id="version">Version 1.4.0</p>
+        <p id="version">Version 1.4.1</p>
         <div id="status" class="mb-2 text-gray-500">Initializing...</div>
         <div id="loader" class="loader"></div>
 
@@ -37,18 +37,16 @@
         <button id="retryBtn" class="mt-2 w-full bg-yellow-500 text-white rounded p-2 hover:bg-yellow-600 hidden">Retry</button>
     </div>
 
- <script>
+<script>
 const AIRTABLE_API_KEY = 'Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540';
 const AIRTABLE_BASE_URL = 'https://api.airtable.com/v0/appcQRU8kU0f9xO9l';
 const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z';
 
-// URL Parameters passed from previous screen
 const urlParams = new URLSearchParams(window.location.search);
 const recordingId = urlParams.get('recording_id');
 const transcriptionId = urlParams.get('transcription_id');
 const userId = urlParams.get('user_id');
 
-// UI Elements
 const statusEl = document.getElementById('status');
 const loaderEl = document.getElementById('loader');
 const emailTextEl = document.getElementById('emailText');
@@ -56,10 +54,8 @@ const generateBtn = document.getElementById('generateBtn');
 const copyBtn = document.getElementById('copyBtn');
 const retryBtn = document.getElementById('retryBtn');
 
-// Helper function to update UI status messages
 const updateStatus = (msg) => statusEl.textContent = msg;
 
-// Check for required IDs
 if (!recordingId || !transcriptionId || !userId) {
     updateStatus('❌ Missing required parameters. Please return to the previous page.');
     generateBtn.disabled = true;
@@ -88,53 +84,11 @@ async function airtableUpdateFollowUpRequested() {
     return data;
 }
 
-// Fetch transcription text from Airtable (transcription table)
-async function fetchTranscriptionText() {
-    const res = await fetch(`${AIRTABLE_BASE_URL}/Transcriptions/${transcriptionId}`, {
-        headers: {'Authorization': AIRTABLE_API_KEY}
-    });
-    const data = await res.json();
-    console.log('Transcription data:', data);
-
-    if (data.fields) {
-        return data.fields.edited_text || data.fields.raw_text || null;
-    } else {
-        throw new Error('Transcription text not found.');
-    }
-}
-
-// Polling function to fetch generated follow-up email
-async function pollForFollowUpEmail(attempts = 10, intervalMs = 5000) {
-    let attempt = 0;
-    loaderEl.style.display = 'block';
-
-    const intervalId = setInterval(async () => {
-        attempts++;
-        console.log('Polling Airtable, attempt:', attempts);
-        const result = await fetchFollowUpEmail();
-        if (result) {
-            clearInterval(intervalId);
-            emailTextEl.value = result.emailText;
-            updateStatus('Email ready!');
-            copyBtn.dataset.followupId = result.followup_id;
-            copyBtn.classList.remove('hidden');
-            loaderEl.style.display = 'none';
-        } else if (attempts >= 4) {  // Stop after 20 seconds (4 attempts * 5 sec each)
-            clearInterval(intervalId);
-            updateStatus('No follow-up email found. Please retry.');
-            retryBtn.classList.remove('hidden');
-            loaderEl.style.display = 'none';
-            generateBtn.disabled = false;
-        }
-    }, 5000);
-}
-
-// Fetch generated follow-up email from Airtable
 async function fetchFollowUpEmail() {
     const url = `${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recordingId}'`);
     const res = await fetch(url, { headers: {'Authorization': AIRTABLE_API_KEY} });
     const data = await res.json();
-    console.log('Fetched follow-up email:', data);
+    console.log('Fetched follow-up email data:', data);
 
     if (data.records && data.records.length > 0 && data.records[0].fields.email_follow_up_text) {
         return {
@@ -145,8 +99,33 @@ async function fetchFollowUpEmail() {
     return null;
 }
 
+async function pollForFollowUpEmail() {
+    let attempts = 0;
+    loaderEl.style.display = 'block';
 
-// Mark follow-up as completed
+    const intervalId = setInterval(async () => {
+        attempts++;
+        console.log('Polling Airtable attempt:', attempts);
+        
+        const result = await fetchFollowUpEmail();
+        
+        if (result) {
+            clearInterval(intervalId);
+            emailTextEl.value = result.emailText;
+            updateStatus('Email ready!');
+            copyBtn.dataset.followupId = result.followup_id;
+            copyBtn.classList.remove('hidden');
+            loaderEl.style.display = 'none';
+        } else if (attempts >= 4) {
+            clearInterval(intervalId);
+            updateStatus('No follow-up found. Please retry.');
+            retryBtn.classList.remove('hidden');
+            loaderEl.style.display = 'none';
+            generateBtn.disabled = false;
+        }
+    }, 5000);
+}
+
 async function markFollowUpCompleted(followup_id) {
     await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups/${followup_id}`, {
         method: 'PATCH',
@@ -159,7 +138,6 @@ async function markFollowUpCompleted(followup_id) {
     console.log('Marked follow-up completed:', followup_id);
 }
 
-// Event listeners
 generateBtn.onclick = async () => {
     updateStatus('Requesting follow-up email...');
     generateBtn.disabled = true;
@@ -169,7 +147,7 @@ generateBtn.onclick = async () => {
     try {
         await airtableUpdateFollowUpRequested();
         updateStatus('Follow-up is being created...');
-        pollForEmail();
+        pollForFollowUpEmail();  // ✅ Correct function name
     } catch (error) {
         console.error('Error during generateBtn click:', error);
         updateStatus('Error requesting follow-up. Please retry.');
@@ -179,14 +157,12 @@ generateBtn.onclick = async () => {
     }
 };
 
-// Retry button functionality
 retryBtn.onclick = () => {
     retryBtn.classList.add('hidden');
     generateBtn.disabled = false;
     updateStatus('Ready to retry.');
 };
 
-// Copy email to clipboard
 copyBtn.onclick = async () => {
     navigator.clipboard.writeText(emailTextEl.value);
     updateStatus('Copied to clipboard!');
@@ -194,7 +170,7 @@ copyBtn.onclick = async () => {
 };
 
 // Initial setup
-document.getElementById('loader').style.display = 'none';
+loaderEl.style.display = 'none';
 updateStatus('Ready to generate.');
 </script>
 </body>
