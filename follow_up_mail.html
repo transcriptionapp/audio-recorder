@@ -26,7 +26,7 @@
 <body class="bg-gray-50 p-4">
     <div class="max-w-lg mx-auto mt-6 p-4 bg-white shadow rounded-lg">
         <h1 class="text-xl font-bold mb-4">AI Follow-Up Email</h1>
-        <p id="version">Version 1.3.7</p>
+        <p id="version">Version 1.3.8</p>
         <div id="status" class="mb-2 text-gray-500">Initializing...</div>
         <div id="loader" class="loader"></div>
 
@@ -56,10 +56,15 @@
 
     const updateStatus = (msg) => statusEl.textContent = msg;
 
-    async function airtableUpdateFollowUpRequested() {
-        if (!recordingId) throw new Error('Missing recording ID');
+   // ✅ Function to request a follow-up email generation in Airtable
+async function airtableUpdateFollowUpRequested() {
+    // Validate that recordingId is available from URL parameters
+    if (!recordingId) {
+        throw new Error('Missing recording ID from URL parameters.');
+    }
 
-        const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
+    try {
+        const response = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
             method: 'POST',
             headers: {
                 'Authorization': AIRTABLE_API_KEY,
@@ -73,8 +78,22 @@
                 }
             })
         });
-        console.log('Airtable follow-up requested response:', await res.json());
+
+        // Parse the response from Airtable for debugging
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error('Airtable responded with an error:', result);
+            throw new Error(`Airtable error: ${result.error?.message || 'Unknown error'}`);
+        }
+
+        console.log('✅ Airtable follow-up requested successfully:', result);
+        return result;
+    } catch (error) {
+        console.error('❌ Error requesting follow-up in Airtable:', error);
+        throw error; // rethrow to be handled by the calling function
     }
+}
 
     async function fetchFollowUpEmail() {
         const url = `${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recordingId}'`);
