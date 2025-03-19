@@ -39,6 +39,7 @@
         let recordingId = "";
         let transcriptionId = "";
         let lastRecordedBlob = null;
+        let lastTimestamp = "";
 
         function generateUniqueId(prefix) {
             return `${prefix}_${crypto.randomUUID()}`;
@@ -92,8 +93,8 @@
                 let audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
                 lastRecordedBlob = audioBlob;
                 recordingId = generateUniqueId("rec");
-                let timestamp = new Date().toISOString().replace(/:/g, "-");
-                let uniqueFilename = `${recordingId}_${timestamp}.mp3`;
+                lastTimestamp = new Date().toISOString().replace(/:/g, "-");
+                let uniqueFilename = `${recordingId}_${lastTimestamp}.mp3`;
 
                 document.getElementById("audioPlayback").src = URL.createObjectURL(audioBlob);
                 document.getElementById("audioPlayback").style.display = "block";
@@ -117,8 +118,15 @@
                 setTimeout(() => fetchTranscription(), 5000);
             } else {
                 document.getElementById("status").innerText = "Upload Failed!";
+                document.getElementById("retryUpload").style.display = "inline";
             }
         }
+
+        document.getElementById("retryUpload").addEventListener("click", async function() {
+            if (!lastRecordedBlob) return alert("⚠️ No audio available for re-upload.");
+            document.getElementById("status").innerText = "Retrying upload...";
+            await uploadRecording(lastRecordedBlob, `${recordingId}_${lastTimestamp}.mp3`);
+        });
 
         document.getElementById("gotoFollowup").addEventListener("click", function() {
             window.location.href = `https://transcriptionapp.github.io/audio-recorder/follow_up_mail.html?recording_id=${recordingId}&transcription_id=${transcriptionId}&user_id=${userId}`;
