@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Follow-Up Email Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Loader Animation */
         .loader {
             border: 6px solid #f3f3f3;
             border-top: 6px solid #3498db;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             animation: spin 2s linear infinite;
             margin: 10px auto;
             display: none;
@@ -38,7 +38,14 @@
     </div>
 
     <script>
-    // Existing CONFIGURATION and utility code remain unchanged...
+    const AIRTABLE_API_KEY = 'Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540';
+    const AIRTABLE_BASE_URL = 'https://api.airtable.com/v0/appcQRU8kU0f9xO9l';
+    const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const recordingId = urlParams.get('recording_id');
+    const transcriptionId = urlParams.get('transcription_id');
+    const userId = urlParams.get('user_id');
 
     const statusEl = document.getElementById('status');
     const loaderEl = document.getElementById('loader');
@@ -50,7 +57,7 @@
     const updateStatus = (msg) => statusEl.textContent = msg;
 
     async function airtableUpdateFollowUpRequested() {
-        if (!recording_id) throw new Error('Missing recording ID');
+        if (!recordingId) throw new Error('Missing recording ID');
 
         const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
             method: 'POST',
@@ -60,7 +67,7 @@
             },
             body: JSON.stringify({
                 fields: {
-                    recording_id,
+                    recording_id: recordingId,
                     email_follow_up_requested: true,
                     follow_up_status: 'requested'
                 }
@@ -69,23 +76,8 @@
         console.log('Airtable follow-up requested response:', await res.json());
     }
 
-    async function triggerMakeWebhook(transcriptionText) {
-        const res = await fetch(MAKE_WEBHOOK_URL, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                recording_id,
-                transcription_id,
-                transcription_text: transcriptionText,
-                user_id
-            })
-        });
-        console.log('Webhook response status:', res.status);
-        return res.ok;
-    }
-
     async function fetchFollowUpEmail() {
-        const url = `${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recording_id}'`);
+        const url = `${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recordingId}'`);
         const res = await fetch(url, { headers: {'Authorization': AIRTABLE_API_KEY} });
         const data = await res.json();
         console.log('Fetched follow-up email data:', data);
@@ -107,16 +99,38 @@
 
         try {
             await airtableUpdateFollowUpRequested();
-            updateStatus('Follow-up is being created...');
             pollForEmail();
         } catch (error) {
             console.error('Error:', error);
             updateStatus('Error requesting follow-up. Please retry.');
             retryBtn.classList.remove('hidden');
-            generateBtn.disabled = false;
             loaderEl.style.display = 'none';
+            generateBtn.disabled = false;
         }
     };
+
+    async function pollForEmail() {
+        let attempts = 0;
+        loaderEl.style.display = 'block';
+        const interval = setInterval(async () => {
+            attempts++;
+            const result = await fetchFollowUpEmail();
+            if (result) {
+                clearInterval(interval);
+                emailTextEl.value = result.emailText;
+                updateStatus('Email ready!');
+                copyBtn.dataset.followupId = result.followup_id;
+                copyBtn.classList.remove('hidden');
+                loaderEl.style.display = 'none';
+            } else if (attempts >= 4) {
+                clearInterval(interval);
+                updateStatus('No follow-up found. Please retry.');
+                retryBtn.classList.remove('hidden');
+                loaderEl.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }, 5000);
+    }
 
     retryBtn.onclick = () => {
         retryBtn.classList.add('hidden');
@@ -130,28 +144,18 @@
         await markFollowUpCompleted(copyBtn.dataset.followupId);
     };
 
-    async function pollForEmail() {
-        let attempts = 0;
-        const interval = setInterval(async () => {
-            attempts++;
-            console.log('Polling attempt:', attempts);
-            const result = await fetchFollowUpEmail();
-            if (result) {
-                clearInterval(interval);
-                emailTextEl.value = result.emailText;
-                updateStatus('Email ready!');
-                copyBtn.dataset.followupId = result.followup_id;
-                copyBtn.classList.remove('hidden');
-                loaderEl.style.display = 'none';
-            } else if (attempts >= 4) {
-                clearInterval(interval);
-                updateStatus('No follow-up found. Please retry.');
-                retryBtn.classList.remove('hidden');
-                generateBtn.disabled = false;
-                loaderEl.style.display = 'none';
-            }
-        }, 5000);
+    async function markFollowUpCompleted(followup_id) {
+        await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups/${followup_id}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': AIRTABLE_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ fields: { follow_up_status: 'completed' } })
+        });
     }
+
+    function updateStatus(msg) { statusEl.textContent = msg; }
 
     updateStatus('Ready to generate.');
     </script>
