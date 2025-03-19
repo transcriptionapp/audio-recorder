@@ -26,7 +26,7 @@
 <body class="bg-gray-50 p-4">
     <div class="max-w-lg mx-auto mt-6 p-4 bg-white shadow rounded-lg">
         <h1 class="text-xl font-bold mb-4">AI Follow-Up Email</h1>
-        <p id="version">Version 1.4.1</p>
+        <p id="version">Version 1.4.2</p>
         <div id="status" class="mb-2 text-gray-500">Initializing...</div>
         <div id="loader" class="loader"></div>
 
@@ -39,8 +39,7 @@
 
 <script>
 const AIRTABLE_API_KEY = 'Bearer pat8waL0o0Bzsz9u5.92fd5d6afa56f123e309c2c6a5c6e5bbbc8d722ee25fccd5918e274f7d8aa540';
-const AIRTABLE_BASE_URL = 'https://api.airtable.com/v0/appcQRU8kU0f9xO9l';
-const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/k3a1gdx5ypf75heuu72hdxz1j94d2o7z';
+const AIRTABLE_BASE_URL = 'https://api.airtable.com/v0/appcQRU8kU0f9xO9l/Recordings';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recordingId = urlParams.get('recording_id');
@@ -57,100 +56,89 @@ const retryBtn = document.getElementById('retryBtn');
 const updateStatus = (msg) => statusEl.textContent = msg;
 
 if (!recordingId || !transcriptionId || !userId) {
-    updateStatus('❌ Missing required parameters. Please return to the previous page.');
+    updateStatus('❌ Missing required parameters.');
     generateBtn.disabled = true;
 }
 
-async function airtableUpdateFollowUpRequested() {
-    if (!recordingId) throw new Error('Missing recording ID');
-
-    const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
-        method: 'POST',
-        headers: {
-            'Authorization': AIRTABLE_API_KEY,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            fields: {
-                recording_id: recordingId,
-                email_follow_up_requested: true,
-                follow_up_status: 'requested'
-            }
-        })
-    });
-
+async function airtableRequestFollowUp() {
+    const url = `${AIRTABLE_BASE_URL}?filterByFormula=` + encodeURIComponent(`{recording_id}='${recordingId}'`);
+    const res = await fetch(url, { headers: {'Authorization': AIRTABLE_API_KEY} });
     const data = await res.json();
-    console.log('Airtable follow-up requested response:', data);
-    return data;
+
+    if (data.records.length > 0) {
+        const airtableRecordId = data.records[0].id;
+
+        const updateRes = await fetch(`${AIRTABLE_BASE_URL}/${airtableRecordId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': AIRTABLE_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                fields: {
+                    email_follow_up_requested: true,
+                    follow_up_status: 'requested'
+                }
+            })
+        });
+
+        const updateData = await updateRes.json();
+        console.log('Follow-up request sent:', updateData);
+    } else {
+        throw new Error('No matching record found.');
+    }
 }
 
 async function fetchFollowUpEmail() {
-    const url = `${AIRTABLE_BASE_URL}/Follow-Ups?filterByFormula=` + encodeURIComponent(`{recording_id}='${recordingId}'`);
+    const url = `${AIRTABLE_BASE_URL}?filterByFormula=` + encodeURIComponent(`{recording_id}='${recordingId}'`);
     const res = await fetch(url, { headers: {'Authorization': AIRTABLE_API_KEY} });
     const data = await res.json();
-    console.log('Fetched follow-up email data:', data);
 
-    if (data.records && data.records.length > 0 && data.records[0].fields.email_follow_up_text) {
-        return {
-            emailText: data.records[0].fields.email_follow_up_text,
-            followup_id: data.records[0].id
-        };
+    if (data.records.length > 0 && data.records[0].fields.email_follow_up_text) {
+        return data.records[0].fields.email_follow_up_text;
     }
     return null;
 }
 
-async function pollForFollowUpEmail() {
+function pollForFollowUpEmail() {
     let attempts = 0;
     loaderEl.style.display = 'block';
 
     const intervalId = setInterval(async () => {
         attempts++;
-        console.log('Polling Airtable attempt:', attempts);
-        
-        const result = await fetchFollowUpEmail();
-        
-        if (result) {
+        console.log('Checking for follow-up email, attempt:', attempts);
+
+        const emailText = await fetchFollowUpEmail();
+
+        if (emailText) {
             clearInterval(intervalId);
-            emailTextEl.value = result.emailText;
-            updateStatus('Email ready!');
-            copyBtn.dataset.followupId = result.followup_id;
+            emailTextEl.value = emailText;
+            updateStatus('✅ Email is ready!');
             copyBtn.classList.remove('hidden');
             loaderEl.style.display = 'none';
         } else if (attempts >= 4) {
             clearInterval(intervalId);
-            updateStatus('No follow-up found. Please retry.');
+            updateStatus('❌ No email found yet. Retry?');
             retryBtn.classList.remove('hidden');
-            loaderEl.style.display = 'none';
             generateBtn.disabled = false;
+            loaderEl.style.display = 'none';
         }
     }, 5000);
 }
 
-async function markFollowUpCompleted(followup_id) {
-    await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups/${followup_id}`, {
-        method: 'PATCH',
-        headers: {
-            'Authorization': AIRTABLE_API_KEY,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fields: { follow_up_status: 'completed' } })
-    });
-    console.log('Marked follow-up completed:', followup_id);
-}
-
 generateBtn.onclick = async () => {
-    updateStatus('Requesting follow-up email...');
+    updateStatus('⏳ Requesting follow-up...');
     generateBtn.disabled = true;
     retryBtn.classList.add('hidden');
     loaderEl.style.display = 'block';
 
     try {
-        await airtableUpdateFollowUpRequested();
-        updateStatus('Follow-up is being created...');
-        pollForFollowUpEmail();  // ✅ Correct function name
+        await airtableRequestFollowUp();
+        updateStatus('⏳ Generating email...');
+        pollForFollowUpEmail();
     } catch (error) {
-        console.error('Error during generateBtn click:', error);
-        updateStatus('Error requesting follow-up. Please retry.');
+        console.error('Error:', error);
+        updateStatus('❌ Error requesting follow-up.');
         retryBtn.classList.remove('hidden');
         loaderEl.style.display = 'none';
         generateBtn.disabled = false;
@@ -160,18 +148,17 @@ generateBtn.onclick = async () => {
 retryBtn.onclick = () => {
     retryBtn.classList.add('hidden');
     generateBtn.disabled = false;
-    updateStatus('Ready to retry.');
+    updateStatus('🔄 Ready to retry.');
 };
 
-copyBtn.onclick = async () => {
+copyBtn.onclick = () => {
     navigator.clipboard.writeText(emailTextEl.value);
-    updateStatus('Copied to clipboard!');
-    await markFollowUpCompleted(copyBtn.dataset.followupId);
+    updateStatus('📋 Copied!');
 };
 
 // Initial setup
 loaderEl.style.display = 'none';
-updateStatus('Ready to generate.');
+updateStatus('🚀 Ready to generate.');
 </script>
 </body>
 </html>
