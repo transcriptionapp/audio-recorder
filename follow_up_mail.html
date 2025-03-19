@@ -26,7 +26,7 @@
 <body class="bg-gray-50 p-4">
     <div class="max-w-lg mx-auto mt-6 p-4 bg-white shadow rounded-lg">
         <h1 class="text-xl font-bold mb-4">AI Follow-Up Email</h1>
-        <p id="version">Version 1.3.9</p>
+        <p id="version">Version 1.4.0</p>
         <div id="status" class="mb-2 text-gray-500">Initializing...</div>
         <div id="loader" class="loader"></div>
 
@@ -65,8 +65,9 @@ if (!recordingId || !transcriptionId || !userId) {
     generateBtn.disabled = true;
 }
 
-// Airtable API: request a follow-up email
 async function airtableUpdateFollowUpRequested() {
+    if (!recordingId) throw new Error('Missing recording ID');
+
     const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
         method: 'POST',
         headers: {
@@ -81,8 +82,9 @@ async function airtableUpdateFollowUpRequested() {
             }
         })
     });
+
     const data = await res.json();
-    console.log('Airtable response (Follow-Up requested):', data);
+    console.log('Airtable follow-up requested response:', data);
     return data;
 }
 
@@ -143,27 +145,6 @@ async function fetchFollowUpEmail() {
     return null;
 }
 
-// Airtable Update to request follow-up email
-async function airtableUpdateFollowUpRequested() {
-    if (!recordingId) throw new Error('Missing recording ID');
-
-    const res = await fetch(`${AIRTABLE_BASE_URL}/Follow-Ups`, {
-        method: 'POST',
-        headers: {
-            'Authorization': AIRTABLE_API_KEY,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            fields: {
-                recording_id: recordingId,
-                email_follow_up_requested: true,
-                follow_up_status: 'requested'
-            }
-        })
-    });
-    const data = await res.json();
-    console.log('Requested follow-up creation:', data);
-}
 
 // Mark follow-up as completed
 async function markFollowUpCompleted(followup_id) {
