@@ -122,7 +122,7 @@
                 copyBtn.dataset.followupId = result.followup_id;
                 copyBtn.classList.remove('hidden');
                 loaderEl.style.display = 'none';
-            } else if (attempts >= 4) {
+            } else if (attempts >= 10) {
                 clearInterval(interval);
                 updateStatus('No follow-up found. Please retry.');
                 retryBtn.classList.remove('hidden');
